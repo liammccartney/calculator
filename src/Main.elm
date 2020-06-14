@@ -32,8 +32,8 @@ type Operator
 
 
 type alias Model =
-    { lhs : Int
-    , rhs : Int
+    { lhs : Float
+    , rhs : Float
     , operator : Operator
     }
 
@@ -56,19 +56,19 @@ init =
 
 
 allOperands =
-    [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 ]
+    [ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 0.0 ]
 
 
 view : Model -> Html Msg
 view { lhs, rhs, operator } =
     Html.div []
         [ Html.div [ Html.css displayTotalCss ]
-            [ case ( lhs, rhs ) of
+            [ case ( lhs, truncate rhs ) of
                 ( left, 0 ) ->
-                    Html.text (String.fromInt left)
+                    Html.text (String.fromFloat left)
 
                 ( left, right ) ->
-                    Html.text (String.fromInt right)
+                    Html.text (String.fromFloat rhs)
             ]
         , List.append (List.map cardView allOperands)
             [ cardViewOperator Add "+"
@@ -91,12 +91,12 @@ displayTotalCss =
     ]
 
 
-cardView : Int -> ( String, Html Msg )
+cardView : Float -> ( String, Html Msg )
 cardView operand =
-    ( "card" ++ String.fromInt operand
+    ( "card" ++ String.fromFloat operand
     , Html.div
         [ onClick (OperandPressed operand) ]
-        [ Html.text (String.fromInt operand) ]
+        [ Html.text (String.fromFloat operand) ]
     )
 
 
@@ -159,16 +159,9 @@ css =
 
 
 type Msg
-    = OperandPressed Int
+    = OperandPressed Float
     | OperatorPressed Operator
     | ClearPressed
-
-
-inputsToString : List Int -> String
-inputsToString inputs =
-    inputs
-        |> List.map String.fromInt
-        |> String.join ""
 
 
 update : Msg -> Model -> Model
@@ -179,21 +172,24 @@ update msg model =
     in
     case msg of
         OperandPressed operand ->
-            case ( lhs, rhs, operator ) of
+            case ( truncate lhs, truncate rhs, operator ) of
                 ( 0, 0, op ) ->
                     { model | lhs = operand }
 
                 ( left, 0, NoOp ) ->
-                    { model | lhs = left * 10 + operand }
+                    { model | lhs = lhs * 10 + operand }
 
                 ( left, 0, op ) ->
                     { model | rhs = operand }
 
                 ( left, right, op ) ->
-                    { model | rhs = right * 10 + operand }
+                    { model | rhs = rhs * 10 + operand }
 
         OperatorPressed op ->
-            case ( lhs, rhs, op ) of
+            case ( lhs, truncate rhs, op ) of
+                ( left, 0, _ ) ->
+                    { model | operator = op }
+
                 ( left, right, Equals ) ->
                     { model | lhs = applyOperator lhs rhs operator, rhs = 0, operator = NoOp }
 
@@ -204,6 +200,7 @@ update msg model =
             init
 
 
+applyOperator : Float -> Float -> Operator -> Float
 applyOperator lhs rhs operator =
     case operator of
         NoOp ->
@@ -219,7 +216,7 @@ applyOperator lhs rhs operator =
             lhs - rhs
 
         Divide ->
-            lhs // rhs
+            lhs / rhs
 
         Equals ->
             rhs
