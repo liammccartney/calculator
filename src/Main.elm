@@ -31,10 +31,15 @@ type Operator
     | Equals
 
 
+type alias Operation =
+    ( Operator, Float )
+
+
 type alias Model =
     { lhs : Float
     , rhs : Float
     , operator : Operator
+    , operation : Maybe Operation
     }
 
 
@@ -48,6 +53,7 @@ init =
     { lhs = 0
     , rhs = 0
     , operator = NoOp
+    , operation = Nothing
     }
 
 
@@ -167,7 +173,7 @@ type Msg
 update : Msg -> Model -> Model
 update msg model =
     let
-        { lhs, rhs, operator } =
+        { lhs, rhs, operator, operation } =
             model
     in
     case msg of
@@ -187,11 +193,16 @@ update msg model =
 
         OperatorPressed op ->
             case ( lhs, truncate rhs, op ) of
-                ( left, 0, _ ) ->
-                    { model | operator = op }
-
                 ( left, right, Equals ) ->
-                    { model | lhs = applyOperator lhs rhs operator, rhs = 0, operator = NoOp }
+                    case operation of
+                        Nothing ->
+                            { model | lhs = applyOperator lhs rhs operator, rhs = 0, operator = NoOp, operation = Just ( operator, rhs ) }
+
+                        Just ( o, r ) ->
+                            { model | lhs = applyOperator lhs r o }
+
+                ( left, 0, _ ) ->
+                    { model | operator = op, operation = Nothing }
 
                 ( left, right, _ ) ->
                     { model | lhs = applyOperator lhs rhs operator, rhs = 0, operator = op }
