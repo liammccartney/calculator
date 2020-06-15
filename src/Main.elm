@@ -41,14 +41,102 @@ type Model
     | Evaluated Operation
 
 
-grey : Css.Color
-grey =
-    Css.hex "d8dee9"
-
-
 init : Model
 init =
     LeftHandSide 0
+
+
+
+-- UPDATE
+
+
+type Msg
+    = OperandPressed Float
+    | OperatorPressed Operator
+    | AllClearPressed
+    | ClearPressed
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        OperandPressed operand ->
+            case model of
+                LeftHandSide left ->
+                    LeftHandSide (left * 10.0 + operand)
+
+                AwaitingRightHandSide operator left ->
+                    ReadyToEvaluate ( operator, left, operand )
+
+                ReadyToEvaluate ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, left, right * 10.0 + operand )
+
+                Evaluated _ ->
+                    LeftHandSide operand
+
+        OperatorPressed Equals ->
+            case model of
+                LeftHandSide left ->
+                    model
+
+                AwaitingRightHandSide operator left ->
+                    Evaluated ( operator, left, left )
+
+                ReadyToEvaluate operation ->
+                    Evaluated operation
+
+                Evaluated ( operator, left, right ) ->
+                    Evaluated ( operator, evaluate ( operator, left, right ), right )
+
+        OperatorPressed newOperator ->
+            case model of
+                LeftHandSide left ->
+                    AwaitingRightHandSide newOperator left
+
+                AwaitingRightHandSide operator left ->
+                    AwaitingRightHandSide newOperator left
+
+                ReadyToEvaluate operation ->
+                    AwaitingRightHandSide newOperator (evaluate operation)
+
+                Evaluated operation ->
+                    AwaitingRightHandSide newOperator (evaluate operation)
+
+        AllClearPressed ->
+            init
+
+        ClearPressed ->
+            case model of
+                LeftHandSide _ ->
+                    init
+
+                AwaitingRightHandSide operator left ->
+                    ReadyToEvaluate ( operator, left, 0 )
+
+                ReadyToEvaluate ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, left, 0 )
+
+                Evaluated ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, right, 0 )
+
+
+evaluate : Operation -> Float
+evaluate ( operator, lhs, rhs ) =
+    case operator of
+        Add ->
+            lhs + rhs
+
+        Multiply ->
+            lhs * rhs
+
+        Subtract ->
+            lhs - rhs
+
+        Divide ->
+            lhs / rhs
+
+        Equals ->
+            rhs
 
 
 
@@ -89,11 +177,18 @@ view model =
         ]
 
 
+grey : Css.Color
+grey =
+    Css.hex "d8dee9"
+
+
 displayTotalCss =
     [ Css.width (Css.px 400)
     , Css.margin2 Css.zero Css.auto
     , Css.fontSize (Css.px 48)
     , Css.textAlign Css.right
+    , Css.paddingRight (Css.px 60)
+    , Css.paddingTop (Css.px 60)
     ]
 
 
@@ -196,7 +291,7 @@ css : List Css.Style
 css =
     [ Css.displayFlex
     , Css.flexWrap Css.wrap
-    , Css.margin2 (Css.px 80) Css.auto
+    , Css.margin2 (Css.px 0) Css.auto
     , Css.width <| Css.px 400
     , Css.paddingTop <| Css.rem 1
     , Css.Global.descendants
@@ -217,92 +312,3 @@ css =
             ]
         ]
     ]
-
-
-type Msg
-    = OperandPressed Float
-    | OperatorPressed Operator
-    | AllClearPressed
-    | ClearPressed
-
-
-update : Msg -> Model -> Model
-update msg model =
-    case msg of
-        OperandPressed operand ->
-            case model of
-                LeftHandSide left ->
-                    LeftHandSide (left * 10.0 + operand)
-
-                AwaitingRightHandSide operator left ->
-                    ReadyToEvaluate ( operator, left, operand )
-
-                ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, right * 10.0 + operand )
-
-                Evaluated _ ->
-                    LeftHandSide operand
-
-        OperatorPressed Equals ->
-            case model of
-                LeftHandSide left ->
-                    model
-
-                AwaitingRightHandSide operator left ->
-                    Evaluated ( operator, left, left )
-
-                ReadyToEvaluate operation ->
-                    Evaluated operation
-
-                Evaluated ( operator, left, right ) ->
-                    Evaluated ( operator, evaluate ( operator, left, right ), right )
-
-        OperatorPressed newOperator ->
-            case model of
-                LeftHandSide left ->
-                    AwaitingRightHandSide newOperator left
-
-                AwaitingRightHandSide operator left ->
-                    AwaitingRightHandSide newOperator left
-
-                ReadyToEvaluate operation ->
-                    AwaitingRightHandSide newOperator (evaluate operation)
-
-                Evaluated operation ->
-                    AwaitingRightHandSide newOperator (evaluate operation)
-
-        AllClearPressed ->
-            init
-
-        ClearPressed ->
-            case model of
-                LeftHandSide _ ->
-                    init
-
-                AwaitingRightHandSide operator left ->
-                    ReadyToEvaluate ( operator, left, 0 )
-
-                ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, 0 )
-
-                Evaluated ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, right, 0 )
-
-
-evaluate : Operation -> Float
-evaluate ( operator, lhs, rhs ) =
-    case operator of
-        Add ->
-            lhs + rhs
-
-        Multiply ->
-            lhs * rhs
-
-        Subtract ->
-            lhs - rhs
-
-        Divide ->
-            lhs / rhs
-
-        Equals ->
-            rhs
