@@ -23,8 +23,7 @@ main =
 
 
 type Operator
-    = NoOp
-    | Divide
+    = Divide
     | Multiply
     | Subtract
     | Add
@@ -32,15 +31,14 @@ type Operator
 
 
 type alias Operation =
-    ( Operator, Float )
+    ( Operator, Float, Float )
 
 
-type alias Model =
-    { lhs : Float
-    , rhs : Float
-    , operator : Operator
-    , operation : Maybe Operation
-    }
+type Model
+    = LeftHandSide Float
+    | AwaitingRightHandSide Operator Float
+    | ReadyToEvaluate Operation
+    | Evaluated Operation
 
 
 grey : Css.Color
@@ -50,11 +48,7 @@ grey =
 
 init : Model
 init =
-    { lhs = 0
-    , rhs = 0
-    , operator = NoOp
-    , operation = Nothing
-    }
+    LeftHandSide 0
 
 
 
@@ -66,15 +60,21 @@ allOperands =
 
 
 view : Model -> Html Msg
-view { lhs, rhs, operator } =
+view model =
     Html.div []
         [ Html.div [ Html.css displayTotalCss ]
-            [ case ( lhs, truncate rhs ) of
-                ( left, 0 ) ->
+            [ case model of
+                LeftHandSide left ->
                     Html.text (String.fromFloat left)
 
-                ( left, right ) ->
-                    Html.text (String.fromFloat rhs)
+                AwaitingRightHandSide operator left ->
+                    Html.text (String.fromFloat left)
+
+                ReadyToEvaluate ( operator, left, right ) ->
+                    Html.text (String.fromFloat right)
+
+                Evaluated operation ->
+                    Html.text (String.fromFloat (evaluate operation))
             ]
         , List.append (List.map cardView allOperands)
             [ cardViewOperator Add "+"
@@ -82,7 +82,7 @@ view { lhs, rhs, operator } =
             , cardViewOperator Multiply "X"
             , cardViewOperator Divide "÷"
             , cardViewOperator Equals "="
-            , clear
+            , clear model
             ]
             |> Html.Styled.Keyed.node "div"
                 [ Html.css css ]
@@ -90,10 +90,10 @@ view { lhs, rhs, operator } =
 
 
 displayTotalCss =
-    [ Css.width (Css.pct 80)
+    [ Css.width (Css.px 400)
     , Css.margin2 Css.zero Css.auto
     , Css.fontSize (Css.px 48)
-    , Css.textAlign Css.center
+    , Css.textAlign Css.right
     ]
 
 
@@ -106,13 +106,68 @@ cardView operand =
     )
 
 
-clear : ( String, Html Msg )
-clear =
-    ( "card clear"
-    , Html.div
-        [ onClick ClearPressed ]
-        [ Html.text "C" ]
-    )
+clear : Model -> ( String, Html Msg )
+clear model =
+    case model of
+        LeftHandSide left ->
+            if truncate left == 0 then
+                ( "card clear"
+                , Html.div
+                    [ onClick AllClearPressed ]
+                    [ Html.text "AC" ]
+                )
+
+            else
+                ( "card clear"
+                , Html.div
+                    [ onClick ClearPressed ]
+                    [ Html.text "C" ]
+                )
+
+        AwaitingRightHandSide _ left ->
+            if truncate left == 0 then
+                ( "card clear"
+                , Html.div
+                    [ onClick AllClearPressed ]
+                    [ Html.text "AC" ]
+                )
+
+            else
+                ( "card clear"
+                , Html.div
+                    [ onClick ClearPressed ]
+                    [ Html.text "C" ]
+                )
+
+        ReadyToEvaluate ( operator, left, right ) ->
+            if truncate right == 0 then
+                ( "card clear"
+                , Html.div
+                    [ onClick AllClearPressed ]
+                    [ Html.text "AC" ]
+                )
+
+            else
+                ( "card clear"
+                , Html.div
+                    [ onClick ClearPressed ]
+                    [ Html.text "C" ]
+                )
+
+        Evaluated ( operator, left, right ) ->
+            if truncate right == 0 then
+                ( "card clear"
+                , Html.div
+                    [ onClick AllClearPressed ]
+                    [ Html.text "AC" ]
+                )
+
+            else
+                ( "card clear"
+                , Html.div
+                    [ onClick ClearPressed ]
+                    [ Html.text "C" ]
+                )
 
 
 cardViewOperator : Operator -> String -> ( String, Html Msg )
@@ -142,7 +197,7 @@ css =
     [ Css.displayFlex
     , Css.flexWrap Css.wrap
     , Css.margin2 (Css.px 80) Css.auto
-    , Css.width <| Css.pct 80
+    , Css.width <| Css.px 400
     , Css.paddingTop <| Css.rem 1
     , Css.Global.descendants
         [ Css.Global.selector "> div"
@@ -167,56 +222,76 @@ css =
 type Msg
     = OperandPressed Float
     | OperatorPressed Operator
+    | AllClearPressed
     | ClearPressed
 
 
 update : Msg -> Model -> Model
 update msg model =
-    let
-        { lhs, rhs, operator, operation } =
-            model
-    in
     case msg of
         OperandPressed operand ->
-            case ( truncate lhs, truncate rhs, operator ) of
-                ( 0, 0, op ) ->
-                    { model | lhs = operand }
+            case model of
+                LeftHandSide left ->
+                    LeftHandSide (left * 10.0 + operand)
 
-                ( left, 0, NoOp ) ->
-                    { model | lhs = lhs * 10 + operand }
+                AwaitingRightHandSide operator left ->
+                    ReadyToEvaluate ( operator, left, operand )
 
-                ( left, 0, op ) ->
-                    { model | rhs = operand }
+                ReadyToEvaluate ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, left, right * 10.0 + operand )
 
-                ( left, right, op ) ->
-                    { model | rhs = rhs * 10 + operand }
+                Evaluated _ ->
+                    LeftHandSide operand
 
-        OperatorPressed op ->
-            case ( lhs, truncate rhs, op ) of
-                ( left, right, Equals ) ->
-                    case operation of
-                        Nothing ->
-                            { model | lhs = applyOperator lhs rhs operator, rhs = 0, operator = NoOp, operation = Just ( operator, rhs ) }
+        OperatorPressed Equals ->
+            case model of
+                LeftHandSide left ->
+                    model
 
-                        Just ( o, r ) ->
-                            { model | lhs = applyOperator lhs r o }
+                AwaitingRightHandSide operator left ->
+                    Evaluated ( operator, left, left )
 
-                ( left, 0, _ ) ->
-                    { model | operator = op, operation = Nothing }
+                ReadyToEvaluate operation ->
+                    Evaluated operation
 
-                ( left, right, _ ) ->
-                    { model | lhs = applyOperator lhs rhs operator, rhs = 0, operator = op }
+                Evaluated ( operator, left, right ) ->
+                    Evaluated ( operator, evaluate ( operator, left, right ), right )
 
-        ClearPressed ->
+        OperatorPressed newOperator ->
+            case model of
+                LeftHandSide left ->
+                    AwaitingRightHandSide newOperator left
+
+                AwaitingRightHandSide operator left ->
+                    AwaitingRightHandSide newOperator left
+
+                ReadyToEvaluate operation ->
+                    AwaitingRightHandSide newOperator (evaluate operation)
+
+                Evaluated operation ->
+                    AwaitingRightHandSide newOperator (evaluate operation)
+
+        AllClearPressed ->
             init
 
+        ClearPressed ->
+            case model of
+                LeftHandSide _ ->
+                    init
 
-applyOperator : Float -> Float -> Operator -> Float
-applyOperator lhs rhs operator =
+                AwaitingRightHandSide operator left ->
+                    ReadyToEvaluate ( operator, left, 0 )
+
+                ReadyToEvaluate ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, left, 0 )
+
+                Evaluated ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, right, 0 )
+
+
+evaluate : Operation -> Float
+evaluate ( operator, lhs, rhs ) =
     case operator of
-        NoOp ->
-            rhs
-
         Add ->
             lhs + rhs
 
