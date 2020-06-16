@@ -154,8 +154,15 @@ incrementOperand current new =
         let
             newValString =
                 String.fromFloat current ++ String.fromFloat new
+
+            stringToConvert =
+                if String.length newValString > 16 then
+                    current |> String.fromFloat |> String.slice 0 16
+
+                else
+                    newValString
         in
-        case String.toFloat newValString of
+        case String.toFloat stringToConvert of
             Just newVal ->
                 newVal
 

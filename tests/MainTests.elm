@@ -22,6 +22,16 @@ extractLeftHandSide model =
             left
 
 
+executeNTimes : Int -> (a -> a) -> a -> a
+executeNTimes n func arg =
+    case n of
+        1 ->
+            func arg
+
+        _ ->
+            executeNTimes (n - 1) func (func arg)
+
+
 suite : Test
 suite =
     describe "The Main Module"
@@ -36,6 +46,8 @@ suite =
         , describe "Main.incrementOperand"
             [ test "Increments an integer value" (\_ -> Main.incrementOperand 1 1 |> Expect.equal 11)
             , test "Increments a decimal value" (\_ -> Main.incrementOperand 1.1 1 |> Expect.within (Absolute 0.000000001) 1.11)
+            , test "Constrains to 16 digits long" (\_ -> Main.incrementOperand 123456789123456789 1 |> Expect.equal 1234567891234567)
+            , test "Constrains to 16 digits long favoring current operand" (\_ -> Main.incrementOperand 1 123456789123456789 |> Expect.equal 1)
             ]
         , describe "update"
             [ fuzz float
@@ -138,6 +150,13 @@ suite =
                         |> Main.update (Main.OperatorPressed Main.Multiply)
                         |> Main.update (Main.OperatorPressed Main.Equals)
                         |> Expect.equal (Main.Evaluated ( Main.Multiply, 44, 44 ))
+                )
+            , test
+                "A user cannot create an operand longer than 16 digits"
+                (\_ ->
+                    Main.init
+                        |> executeNTimes 20 (Main.update (Main.OperandPressed 4))
+                        |> Expect.equal (Main.LeftHandSide 4444444444444444)
                 )
             ]
         ]
