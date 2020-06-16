@@ -1,6 +1,12 @@
 module Main exposing
-    ( Model
+    ( Model(..)
+    , Msg(..)
+    , Operation
+    , Operator(..)
+    , evaluate
+    , incrementOperand
     , init
+    , update
     , view
     )
 
@@ -63,13 +69,13 @@ update msg model =
         OperandPressed operand ->
             case model of
                 LeftHandSide left ->
-                    LeftHandSide (left * 10.0 + operand)
+                    LeftHandSide (incrementOperand left operand)
 
                 AwaitingRightHandSide operator left ->
                     ReadyToEvaluate ( operator, left, operand )
 
                 ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, right * 10.0 + operand )
+                    ReadyToEvaluate ( operator, left, incrementOperand right operand )
 
                 Evaluated _ ->
                     LeftHandSide operand
@@ -137,6 +143,25 @@ evaluate ( operator, lhs, rhs ) =
 
         Equals ->
             rhs
+
+
+incrementOperand : Float -> Float -> Float
+incrementOperand current new =
+    if current == 0 then
+        new
+
+    else
+        let
+            newValString =
+                String.fromFloat current ++ String.fromFloat new
+        in
+        case String.toFloat newValString of
+            Just newVal ->
+                newVal
+
+            Nothing ->
+                -- Placeholder, should handle gracefully
+                0
 
 
 
