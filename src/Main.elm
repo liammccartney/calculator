@@ -44,7 +44,7 @@ type Model
     = LeftHandSide Float
     | AwaitingRightHandSide Operator Float
     | ReadyToEvaluate Operation
-    | Evaluated Operation
+    | Evaluated Operation Float
 
 
 init : Model
@@ -77,7 +77,7 @@ update msg model =
                 ReadyToEvaluate ( operator, left, right ) ->
                     ReadyToEvaluate ( operator, left, incrementOperand right operand )
 
-                Evaluated _ ->
+                Evaluated _ _ ->
                     LeftHandSide operand
 
         OperatorPressed Equals ->
@@ -86,13 +86,21 @@ update msg model =
                     model
 
                 AwaitingRightHandSide operator left ->
-                    Evaluated ( operator, left, left )
+                    let
+                        operation =
+                            ( operator, left, left )
+                    in
+                    Evaluated operation (evaluate operation)
 
                 ReadyToEvaluate operation ->
-                    Evaluated operation
+                    Evaluated operation (evaluate operation)
 
-                Evaluated ( operator, left, right ) ->
-                    Evaluated ( operator, evaluate ( operator, left, right ), right )
+                Evaluated ( operator, left, right ) result ->
+                    let
+                        newOperation =
+                            ( operator, result, right )
+                    in
+                    Evaluated newOperation (evaluate newOperation)
 
         OperatorPressed newOperator ->
             case model of
@@ -105,8 +113,8 @@ update msg model =
                 ReadyToEvaluate operation ->
                     AwaitingRightHandSide newOperator (evaluate operation)
 
-                Evaluated operation ->
-                    AwaitingRightHandSide newOperator (evaluate operation)
+                Evaluated _ result ->
+                    AwaitingRightHandSide newOperator result
 
         AllClearPressed ->
             init
@@ -122,7 +130,7 @@ update msg model =
                 ReadyToEvaluate ( operator, left, right ) ->
                     ReadyToEvaluate ( operator, left, 0 )
 
-                Evaluated ( operator, left, right ) ->
+                Evaluated ( operator, left, right ) _ ->
                     ReadyToEvaluate ( operator, right, 0 )
 
 
@@ -193,8 +201,8 @@ view model =
                 ReadyToEvaluate ( operator, left, right ) ->
                     Html.text (String.fromFloat right)
 
-                Evaluated operation ->
-                    Html.text (String.fromFloat (evaluate operation))
+                Evaluated operation result ->
+                    Html.text (String.fromFloat result)
             ]
         , List.append (List.map cardView allOperands)
             [ cardViewOperator Add "+"
@@ -281,7 +289,7 @@ clear model =
                     [ Html.text "C" ]
                 )
 
-        Evaluated ( operator, left, right ) ->
+        Evaluated ( operator, left, right ) _ ->
             if truncate right == 0 then
                 ( "card clear"
                 , Html.div
