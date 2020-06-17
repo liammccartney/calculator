@@ -6,6 +6,7 @@ module Main exposing
     , evaluate
     , incrementOperand
     , init
+    , main
     , update
     , view
     )
@@ -17,9 +18,9 @@ import Html.Styled as Html exposing (Html)
 import Html.Styled.Attributes as Html
 import Html.Styled.Events exposing (onClick)
 import Html.Styled.Keyed
-import Placeholders.Square exposing (Square)
 
 
+main : Program () Model Msg
 main =
     Browser.sandbox { init = init, update = update, view = view >> Html.toUnstyled }
 
@@ -87,7 +88,7 @@ update msg model =
 
         OperatorPressed Equals ->
             case model of
-                LeftHandSide left ->
+                LeftHandSide _ ->
                     model
 
                 AwaitingRightHandSide operator left ->
@@ -100,7 +101,7 @@ update msg model =
                 ReadyToEvaluate operation ->
                     Evaluated operation (evaluate operation)
 
-                Evaluated ( operator, left, right ) result ->
+                Evaluated ( operator, _, right ) result ->
                     let
                         newOperation =
                             ( operator, result, right )
@@ -112,7 +113,7 @@ update msg model =
                 LeftHandSide left ->
                     AwaitingRightHandSide newOperator left
 
-                AwaitingRightHandSide operator left ->
+                AwaitingRightHandSide _ left ->
                     AwaitingRightHandSide newOperator left
 
                 ReadyToEvaluate operation ->
@@ -146,10 +147,10 @@ update msg model =
                 AwaitingRightHandSide operator left ->
                     ReadyToEvaluate ( operator, left, 0 )
 
-                ReadyToEvaluate ( operator, left, right ) ->
+                ReadyToEvaluate ( operator, left, _ ) ->
                     ReadyToEvaluate ( operator, left, 0 )
 
-                Evaluated ( operator, left, right ) _ ->
+                Evaluated ( operator, _, right ) _ ->
                     ReadyToEvaluate ( operator, right, 0 )
 
 
@@ -209,6 +210,7 @@ incrementOperand current new =
 -- VIEW
 
 
+allOperands : List Float
 allOperands =
     [ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 0.0 ]
 
@@ -221,13 +223,13 @@ view model =
                 LeftHandSide left ->
                     Html.text (String.fromFloat left)
 
-                AwaitingRightHandSide operator left ->
+                AwaitingRightHandSide _ left ->
                     Html.text (String.fromFloat left)
 
-                ReadyToEvaluate ( operator, left, right ) ->
+                ReadyToEvaluate ( _, _, right ) ->
                     Html.text (String.fromFloat right)
 
-                Evaluated operation result ->
+                Evaluated _ result ->
                     Html.text (String.fromFloat result)
             ]
         , List.append (List.map cardView allOperands)
@@ -249,6 +251,7 @@ grey =
     Css.hex "d8dee9"
 
 
+displayTotalCss : List Css.Style
 displayTotalCss =
     [ Css.width (Css.px 400)
     , Css.margin2 Css.zero Css.auto
@@ -301,7 +304,7 @@ clear model =
                     [ Html.text "C" ]
                 )
 
-        ReadyToEvaluate ( operator, left, right ) ->
+        ReadyToEvaluate ( _, _, right ) ->
             if truncate right == 0 then
                 ( "card clear"
                 , Html.div
@@ -316,7 +319,7 @@ clear model =
                     [ Html.text "C" ]
                 )
 
-        Evaluated ( operator, left, right ) _ ->
+        Evaluated ( _, _, right ) _ ->
             if truncate right == 0 then
                 ( "card clear"
                 , Html.div
