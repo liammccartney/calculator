@@ -18,7 +18,7 @@ extractLeftHandSide model =
         Main.ReadyToEvaluate ( _, left, _ ) ->
             left
 
-        Main.Evaluated ( _, left, _ ) ->
+        Main.Evaluated ( _, left, _ ) _ ->
             left
 
 
@@ -95,7 +95,7 @@ suite =
                         |> Main.update (Main.OperatorPressed Main.Add)
                         |> Main.update (Main.OperandPressed 2)
                         |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Add, Main.incrementOperand operand 2, 2 ))
+                        |> Expect.equal (Main.Evaluated ( Main.Add, Main.incrementOperand operand 2, 2 ) (Main.evaluate ( Main.Add, Main.incrementOperand operand 2, 2 )))
                 )
             , test
                 "Repeating an evaluation"
@@ -107,7 +107,7 @@ suite =
                         |> Main.update (Main.OperandPressed 2)
                         |> Main.update (Main.OperatorPressed Main.Equals)
                         |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Divide, 22, 2 ))
+                        |> Expect.equal (Main.Evaluated ( Main.Divide, 22, 2 ) (Main.evaluate ( Main.Divide, 22, 2 )))
                 )
             , test
                 "Starting a new operation from a unevaluated one"
@@ -149,7 +149,7 @@ suite =
                         |> Main.update (Main.OperandPressed 4)
                         |> Main.update (Main.OperatorPressed Main.Multiply)
                         |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Multiply, 44, 44 ))
+                        |> Expect.equal (Main.Evaluated ( Main.Multiply, 44, 44 ) (Main.evaluate ( Main.Multiply, 44, 44 )))
                 )
             , test
                 "A user cannot create an operand longer than 16 digits"

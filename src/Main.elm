@@ -36,6 +36,10 @@ type Operator
     | Equals
 
 
+type Mutator
+    = Negate
+
+
 type alias Operation =
     ( Operator, Float, Float )
 
@@ -59,6 +63,7 @@ init =
 type Msg
     = OperandPressed Float
     | OperatorPressed Operator
+    | MutatorPressed Mutator
     | AllClearPressed
     | ClearPressed
 
@@ -116,6 +121,20 @@ update msg model =
                 Evaluated _ result ->
                     AwaitingRightHandSide newOperator result
 
+        MutatorPressed mutator ->
+            case model of
+                LeftHandSide left ->
+                    LeftHandSide (mutate mutator left)
+
+                AwaitingRightHandSide operator left ->
+                    AwaitingRightHandSide operator (mutate mutator left)
+
+                ReadyToEvaluate ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, left, mutate mutator right )
+
+                Evaluated operation result ->
+                    Evaluated operation (mutate mutator result)
+
         AllClearPressed ->
             init
 
@@ -151,6 +170,13 @@ evaluate ( operator, lhs, rhs ) =
 
         Equals ->
             rhs
+
+
+mutate : Mutator -> Float -> Float
+mutate mutator operand =
+    case mutator of
+        Negate ->
+            -operand
 
 
 incrementOperand : Float -> Float -> Float
@@ -210,6 +236,7 @@ view model =
             , cardViewOperator Multiply "X"
             , cardViewOperator Divide "÷"
             , cardViewOperator Equals "="
+            , cardViewMutator Negate "+/-"
             , clear model
             ]
             |> Html.Styled.Keyed.node "div"
@@ -314,12 +341,12 @@ cardViewOperator operator symbol =
     )
 
 
-cardViewOperatorEquals : String -> ( String, Html Msg )
-cardViewOperatorEquals operator =
-    ( "card" ++ operator
+cardViewMutator : Mutator -> String -> ( String, Html Msg )
+cardViewMutator mutator symbol =
+    ( "card" ++ symbol
     , Html.div
-        [ onClick (OperatorPressed Equals) ]
-        [ Html.text operator ]
+        [ onClick (MutatorPressed mutator) ]
+        [ Html.text symbol ]
     )
 
 
