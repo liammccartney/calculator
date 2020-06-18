@@ -37,7 +37,6 @@ type Operator
     | Multiply
     | Subtract
     | Add
-    | Equals
 
 
 type Mutator
@@ -69,6 +68,7 @@ type Msg
     = OperandPressed String
     | OperatorPressed Operator
     | MutatorPressed Mutator
+    | EqualsPressed
     | AllClearPressed
     | ClearPressed
 
@@ -90,7 +90,7 @@ update msg model =
                 Evaluated _ _ ->
                     LeftHandSide operand
 
-        OperatorPressed Equals ->
+        EqualsPressed ->
             case model of
                 LeftHandSide _ ->
                     model
@@ -201,9 +201,6 @@ evaluate ( operator, left, right ) =
                     |> Maybe.withDefault Decimal.zero
                     |> Decimal.toString
 
-        Equals ->
-            rhs |> Decimal.toString
-
 
 mutate : Mutator -> String -> String
 mutate mutator operand =
@@ -274,7 +271,7 @@ view model =
             , cardViewOperator Subtract "-"
             , cardViewOperator Multiply "X"
             , cardViewOperator Divide "÷"
-            , cardViewOperator Equals "="
+            , cardViewEquals
             , cardViewMutator Negate "+/-"
             , cardViewMutator AppendDecimalPoint "."
             , clear model
@@ -384,6 +381,15 @@ cardViewOperator operator symbol =
     , Html.div
         [ onClick (OperatorPressed operator) ]
         [ Html.text symbol ]
+    )
+
+
+cardViewEquals : ( String, Html Msg )
+cardViewEquals =
+    ( "card" ++ "="
+    , Html.div
+        [ onClick EqualsPressed ]
+        [ Html.text "=" ]
     )
 
 

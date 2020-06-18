@@ -199,7 +199,7 @@ suite =
                         |> update (OperandPressed "2")
                         |> update (OperatorPressed Add)
                         |> update (OperandPressed "2")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> Expect.equal (Evaluated ( Add, incrementOperand operand "2", "2" ) (evaluate ( Add, incrementOperand operand "2", "2" )))
                 )
             , test
@@ -210,8 +210,8 @@ suite =
                         |> update (OperandPressed "4")
                         |> update (OperatorPressed Divide)
                         |> update (OperandPressed "2")
-                        |> update (OperatorPressed Equals)
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
+                        |> update EqualsPressed
                         |> Expect.equal (Evaluated ( Divide, "22", "2" ) (evaluate ( Divide, "22", "2" )))
                 )
             , test
@@ -243,7 +243,7 @@ suite =
                     init
                         |> update (OperandPressed "4")
                         |> update (OperandPressed "4")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> Expect.equal (LeftHandSide "44")
                 )
             , test
@@ -253,7 +253,7 @@ suite =
                         |> update (OperandPressed "4")
                         |> update (OperandPressed "4")
                         |> update (OperatorPressed Multiply)
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> Expect.equal (Evaluated ( Multiply, "44", "44" ) (evaluate ( Multiply, "44", "44" )))
                 )
             , test
@@ -264,7 +264,7 @@ suite =
                         |> update (OperandPressed "4")
                         |> update (OperatorPressed Divide)
                         |> update (OperandPressed "2")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> update (MutatorPressed Negate)
                         |> Expect.equal (Evaluated ( Divide, "44", "2" ) "-22")
                 )
@@ -276,11 +276,11 @@ suite =
                         |> update (OperandPressed "4")
                         |> update (OperatorPressed Divide)
                         |> update (OperandPressed "2")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> update (MutatorPressed Negate)
                         |> update (OperatorPressed Add)
                         |> update (OperandPressed "5")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> Expect.equal (Evaluated ( Add, "-22", "5" ) "-17")
                 )
             , test
@@ -291,7 +291,7 @@ suite =
                         |> update (OperandPressed "4")
                         |> update (OperatorPressed Divide)
                         |> update (OperandPressed "2")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> update (MutatorPressed AppendDecimalPoint)
                         |> update (OperandPressed "2")
                         |> update (OperandPressed "2")
@@ -305,13 +305,13 @@ suite =
                         |> update (OperandPressed "4")
                         |> update (OperatorPressed Divide)
                         |> update (OperandPressed "2")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> update (MutatorPressed AppendDecimalPoint)
                         |> update (OperandPressed "2")
                         |> update (OperandPressed "2")
                         |> update (OperatorPressed Add)
                         |> update (OperandPressed "5")
-                        |> update (OperatorPressed Equals)
+                        |> update EqualsPressed
                         |> Expect.equal (Evaluated ( Add, "0.22", "5" ) "5.22")
                 )
             , test
