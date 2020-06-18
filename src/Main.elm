@@ -145,7 +145,7 @@ update msg model =
                     LeftHandSide (mutate AppendDecimalPoint left)
 
                 AwaitingRightHandSide operator left ->
-                    AwaitingRightHandSide operator (mutate AppendDecimalPoint left)
+                    ReadyToEvaluate ( operator, left, mutate AppendDecimalPoint "0" )
 
                 ReadyToEvaluate ( operator, left, right ) ->
                     ReadyToEvaluate ( operator, left, mutate AppendDecimalPoint right )
