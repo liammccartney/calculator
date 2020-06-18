@@ -1,12 +1,14 @@
 module Main exposing
     ( Model(..)
     , Msg(..)
+    , Mutator(..)
     , Operation
     , Operator(..)
     , evaluate
     , incrementOperand
     , init
     , main
+    , mutate
     , update
     , view
     )
@@ -39,6 +41,7 @@ type Operator
 
 type Mutator
     = Negate
+    | AppendDecimalPoint
 
 
 type alias Operation =
@@ -122,19 +125,33 @@ update msg model =
                 Evaluated _ result ->
                     AwaitingRightHandSide newOperator result
 
-        MutatorPressed mutator ->
+        MutatorPressed Negate ->
             case model of
                 LeftHandSide left ->
-                    LeftHandSide (mutate mutator left)
+                    LeftHandSide (mutate Negate left)
 
                 AwaitingRightHandSide operator left ->
-                    AwaitingRightHandSide operator (mutate mutator left)
+                    AwaitingRightHandSide operator (mutate Negate left)
 
                 ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, mutate mutator right )
+                    ReadyToEvaluate ( operator, left, mutate Negate right )
 
                 Evaluated operation result ->
-                    Evaluated operation (mutate mutator result)
+                    Evaluated operation (mutate Negate result)
+
+        MutatorPressed AppendDecimalPoint ->
+            case model of
+                LeftHandSide left ->
+                    LeftHandSide (mutate AppendDecimalPoint left)
+
+                AwaitingRightHandSide operator left ->
+                    AwaitingRightHandSide operator (mutate AppendDecimalPoint left)
+
+                ReadyToEvaluate ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, left, mutate AppendDecimalPoint right )
+
+                Evaluated operation result ->
+                    LeftHandSide (mutate AppendDecimalPoint "0")
 
         AllClearPressed ->
             init
@@ -187,7 +204,21 @@ mutate : Mutator -> String -> String
 mutate mutator operand =
     case mutator of
         Negate ->
-            "-" ++ operand
+            if String.startsWith "-" operand then
+                String.dropLeft 1 operand
+
+            else if isZero operand then
+                operand
+
+            else
+                "-" ++ operand
+
+        AppendDecimalPoint ->
+            if String.contains "." operand then
+                operand
+
+            else
+                operand ++ "."
 
 
 incrementOperand : String -> String -> String
@@ -240,6 +271,7 @@ view model =
             , cardViewOperator Divide "÷"
             , cardViewOperator Equals "="
             , cardViewMutator Negate "+/-"
+            , cardViewMutator AppendDecimalPoint "."
             , clear model
             ]
             |> Html.Styled.Keyed.node "div"
