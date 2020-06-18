@@ -16,6 +16,7 @@ module Main exposing
 import Browser
 import Css
 import Css.Global
+import Decimal exposing (Decimal)
 import Html.Styled as Html exposing (Html)
 import Html.Styled.Attributes as Html
 import Html.Styled.Events exposing (onClick)
@@ -175,29 +176,33 @@ evaluate : Operation -> String
 evaluate ( operator, left, right ) =
     let
         lhs =
-            String.toFloat left |> Maybe.withDefault 0
+            left |> Decimal.fromString |> Maybe.withDefault Decimal.zero
 
         rhs =
-            String.toFloat right |> Maybe.withDefault 0
-
-        result =
-            case operator of
-                Add ->
-                    lhs + rhs
-
-                Multiply ->
-                    lhs * rhs
-
-                Subtract ->
-                    lhs - rhs
-
-                Divide ->
-                    lhs / rhs
-
-                Equals ->
-                    rhs
+            right |> Decimal.fromString |> Maybe.withDefault Decimal.zero
     in
-    result |> String.fromFloat
+    case operator of
+        Add ->
+            Decimal.add lhs rhs |> Decimal.toString
+
+        Multiply ->
+            Decimal.mul lhs rhs |> Decimal.toString
+
+        Subtract ->
+            Decimal.sub lhs rhs |> Decimal.toString
+
+        Divide ->
+            if isZero right then
+                "Infinity"
+
+            else
+                rhs
+                    |> Decimal.fastdiv lhs
+                    |> Maybe.withDefault Decimal.zero
+                    |> Decimal.toString
+
+        Equals ->
+            rhs |> Decimal.toString
 
 
 mutate : Mutator -> String -> String
