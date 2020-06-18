@@ -42,19 +42,19 @@ type Mutator
 
 
 type alias Operation =
-    ( Operator, Float, Float )
+    ( Operator, String, String )
 
 
 type Model
-    = LeftHandSide Float
-    | AwaitingRightHandSide Operator Float
+    = LeftHandSide String
+    | AwaitingRightHandSide Operator String
     | ReadyToEvaluate Operation
-    | Evaluated Operation Float
+    | Evaluated Operation String
 
 
 init : Model
 init =
-    LeftHandSide 0
+    LeftHandSide "0"
 
 
 
@@ -62,7 +62,7 @@ init =
 
 
 type Msg
-    = OperandPressed Float
+    = OperandPressed String
     | OperatorPressed Operator
     | MutatorPressed Mutator
     | AllClearPressed
@@ -145,74 +145,75 @@ update msg model =
                     init
 
                 AwaitingRightHandSide operator left ->
-                    ReadyToEvaluate ( operator, left, 0 )
+                    ReadyToEvaluate ( operator, left, "0" )
 
                 ReadyToEvaluate ( operator, left, _ ) ->
-                    ReadyToEvaluate ( operator, left, 0 )
+                    ReadyToEvaluate ( operator, left, "0" )
 
                 Evaluated ( operator, _, right ) _ ->
-                    ReadyToEvaluate ( operator, right, 0 )
+                    ReadyToEvaluate ( operator, right, "0" )
 
 
-evaluate : Operation -> Float
-evaluate ( operator, lhs, rhs ) =
-    case operator of
-        Add ->
-            lhs + rhs
+evaluate : Operation -> String
+evaluate ( operator, left, right ) =
+    let
+        lhs =
+            String.toFloat left |> Maybe.withDefault 0
 
-        Multiply ->
-            lhs * rhs
+        rhs =
+            String.toFloat right |> Maybe.withDefault 0
 
-        Subtract ->
-            lhs - rhs
+        result =
+            case operator of
+                Add ->
+                    lhs + rhs
 
-        Divide ->
-            lhs / rhs
+                Multiply ->
+                    lhs * rhs
 
-        Equals ->
-            rhs
+                Subtract ->
+                    lhs - rhs
+
+                Divide ->
+                    lhs / rhs
+
+                Equals ->
+                    rhs
+    in
+    result |> String.fromFloat
 
 
-mutate : Mutator -> Float -> Float
+mutate : Mutator -> String -> String
 mutate mutator operand =
     case mutator of
         Negate ->
-            -operand
+            "-" ++ operand
 
 
-incrementOperand : Float -> Float -> Float
+incrementOperand : String -> String -> String
 incrementOperand current new =
-    if current == 0 then
+    if current == "0" then
         new
 
     else
         let
             newValString =
-                String.fromFloat current ++ String.fromFloat new
-
-            stringToConvert =
-                if String.length newValString > 16 then
-                    current |> String.fromFloat |> String.slice 0 16
-
-                else
-                    newValString
+                current ++ new
         in
-        case String.toFloat stringToConvert of
-            Just newVal ->
-                newVal
+        if String.length newValString > 16 then
+            current |> String.slice 0 16
 
-            Nothing ->
-                -- Placeholder, should handle gracefully
-                0
+        else
+            newValString
 
 
 
 -- VIEW
 
 
-allOperands : List Float
+allOperands : List String
 allOperands =
-    [ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 0.0 ]
+    [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" ]
 
 
 view : Model -> Html Msg
@@ -221,16 +222,16 @@ view model =
         [ Html.div [ Html.css displayTotalCss ]
             [ case model of
                 LeftHandSide left ->
-                    Html.text (String.fromFloat left)
+                    Html.text left
 
                 AwaitingRightHandSide _ left ->
-                    Html.text (String.fromFloat left)
+                    Html.text left
 
                 ReadyToEvaluate ( _, _, right ) ->
-                    Html.text (String.fromFloat right)
+                    Html.text right
 
                 Evaluated _ result ->
-                    Html.text (String.fromFloat result)
+                    Html.text result
             ]
         , List.append (List.map cardView allOperands)
             [ cardViewOperator Add "+"
@@ -262,20 +263,25 @@ displayTotalCss =
     ]
 
 
-cardView : Float -> ( String, Html Msg )
+cardView : String -> ( String, Html Msg )
 cardView operand =
-    ( "card" ++ String.fromFloat operand
+    ( "card" ++ operand
     , Html.div
         [ onClick (OperandPressed operand) ]
-        [ Html.text (String.fromFloat operand) ]
+        [ Html.text operand ]
     )
+
+
+isZero : String -> Bool
+isZero operand =
+    operand |> String.toFloat |> Maybe.withDefault 0 |> (==) 0
 
 
 clear : Model -> ( String, Html Msg )
 clear model =
     case model of
         LeftHandSide left ->
-            if truncate left == 0 then
+            if isZero left then
                 ( "card clear"
                 , Html.div
                     [ onClick AllClearPressed ]
@@ -290,7 +296,7 @@ clear model =
                 )
 
         AwaitingRightHandSide _ left ->
-            if truncate left == 0 then
+            if isZero left then
                 ( "card clear"
                 , Html.div
                     [ onClick AllClearPressed ]
@@ -305,7 +311,7 @@ clear model =
                 )
 
         ReadyToEvaluate ( _, _, right ) ->
-            if truncate right == 0 then
+            if isZero right then
                 ( "card clear"
                 , Html.div
                     [ onClick AllClearPressed ]
@@ -320,7 +326,7 @@ clear model =
                 )
 
         Evaluated ( _, _, right ) _ ->
-            if truncate right == 0 then
+            if isZero right then
                 ( "card clear"
                 , Html.div
                     [ onClick AllClearPressed ]
