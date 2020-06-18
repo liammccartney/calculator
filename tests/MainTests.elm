@@ -2,39 +2,39 @@ module MainTests exposing (..)
 
 import Expect exposing (Expectation, FloatingPointTolerance(..))
 import Fuzz exposing (Fuzzer, float, int, list, string)
-import Main
+import Main exposing (..)
 import Test exposing (..)
 
 
-extractLeftHandSide : Main.Model -> String
+extractLeftHandSide : Model -> String
 extractLeftHandSide model =
     case model of
-        Main.LeftHandSide left ->
+        LeftHandSide left ->
             left
 
-        Main.AwaitingRightHandSide _ left ->
+        AwaitingRightHandSide _ left ->
             left
 
-        Main.ReadyToEvaluate ( _, left, _ ) ->
+        ReadyToEvaluate ( _, left, _ ) ->
             left
 
-        Main.Evaluated ( _, left, _ ) _ ->
+        Evaluated ( _, left, _ ) _ ->
             left
 
 
-extractRightHandSide : Main.Model -> Maybe String
+extractRightHandSide : Model -> Maybe String
 extractRightHandSide model =
     case model of
-        Main.LeftHandSide left ->
+        LeftHandSide left ->
             Nothing
 
-        Main.AwaitingRightHandSide _ left ->
+        AwaitingRightHandSide _ left ->
             Nothing
 
-        Main.ReadyToEvaluate ( _, _, right ) ->
+        ReadyToEvaluate ( _, _, right ) ->
             Just right
 
-        Main.Evaluated ( _, _, right ) _ ->
+        Evaluated ( _, _, right ) _ ->
             Just right
 
 
@@ -51,30 +51,30 @@ executeNTimes n func arg =
 suite : Test
 suite =
     describe "The Main Module"
-        [ describe "Main.evaluate"
-            [ test "Add two numbers" (\_ -> Expect.equal "4" (( Main.Add, "2", "2" ) |> Main.evaluate))
-            , test "Multiply two numbers" (\_ -> Expect.equal "4" (( Main.Multiply, "2", "2" ) |> Main.evaluate))
-            , test "Subtract two numbers" (\_ -> Expect.equal "0" (( Main.Subtract, "2", "2" ) |> Main.evaluate))
-            , test "Subtracting two numbers can be negative" (\_ -> Expect.equal "-5" (( Main.Subtract, "0", "5" ) |> Main.evaluate))
-            , test "Divide two numbers" (\_ -> Expect.equal "1" (( Main.Divide, "2", "2" ) |> Main.evaluate))
-            , test "Divide by zero" (\_ -> Expect.true "dividing by zero to be infinite" (( Main.Divide, "2", "0" ) |> Main.evaluate |> (==) "Infinity"))
+        [ describe "evaluate"
+            [ test "Add two numbers" (\_ -> Expect.equal "4" (( Add, "2", "2" ) |> evaluate))
+            , test "Multiply two numbers" (\_ -> Expect.equal "4" (( Multiply, "2", "2" ) |> evaluate))
+            , test "Subtract two numbers" (\_ -> Expect.equal "0" (( Subtract, "2", "2" ) |> evaluate))
+            , test "Subtracting two numbers can be negative" (\_ -> Expect.equal "-5" (( Subtract, "0", "5" ) |> evaluate))
+            , test "Divide two numbers" (\_ -> Expect.equal "1" (( Divide, "2", "2" ) |> evaluate))
+            , test "Divide by zero" (\_ -> Expect.true "dividing by zero to be infinite" (( Divide, "2", "0" ) |> evaluate |> (==) "Infinity"))
             ]
-        , describe "Main.incrementOperand"
-            [ test "Increments an integer value" (\_ -> Main.incrementOperand "1" "1" |> Expect.equal "11")
-            , test "Increments a decimal value" (\_ -> Main.incrementOperand "1.1" "1" |> Expect.equal "1.11")
-            , test "Constrains to 16 digits long" (\_ -> Main.incrementOperand "123456789123456789" "1" |> Expect.equal "1234567891234567")
-            , test "Constrains to 16 digits long favoring current operand" (\_ -> Main.incrementOperand "1" "123456789123456789" |> Expect.equal "1")
+        , describe "incrementOperand"
+            [ test "Increments an integer value" (\_ -> incrementOperand "1" "1" |> Expect.equal "11")
+            , test "Increments a decimal value" (\_ -> incrementOperand "1.1" "1" |> Expect.equal "1.11")
+            , test "Constrains to 16 digits long" (\_ -> incrementOperand "123456789123456789" "1" |> Expect.equal "1234567891234567")
+            , test "Constrains to 16 digits long favoring current operand" (\_ -> incrementOperand "1" "123456789123456789" |> Expect.equal "1")
             ]
-        , describe "Main.mutate Negate"
-            [ test "Changes a positive operand to negative" (\_ -> Main.mutate Main.Negate "1" |> Expect.equal "-1")
-            , test "Changes a negative operand to positive" (\_ -> Main.mutate Main.Negate "-1" |> Expect.equal "1")
-            , test "Does not negate zero" (\_ -> Main.mutate Main.Negate "0" |> Expect.equal "0")
+        , describe "mutate Negate"
+            [ test "Changes a positive operand to negative" (\_ -> mutate Negate "1" |> Expect.equal "-1")
+            , test "Changes a negative operand to positive" (\_ -> mutate Negate "-1" |> Expect.equal "1")
+            , test "Does not negate zero" (\_ -> mutate Negate "0" |> Expect.equal "0")
             ]
-        , describe "Main.mutate AppendDecimalPoint"
-            [ test "Adds a decimal point to the operand" (\_ -> Main.mutate Main.AppendDecimalPoint "0" |> Expect.equal "0.")
-            , test "Does not add a decimal point if there already is one" (\_ -> Main.mutate Main.AppendDecimalPoint "1.2" |> Expect.equal "1.2")
+        , describe "mutate AppendDecimalPoint"
+            [ test "Adds a decimal point to the operand" (\_ -> mutate AppendDecimalPoint "0" |> Expect.equal "0.")
+            , test "Does not add a decimal point if there already is one" (\_ -> mutate AppendDecimalPoint "1.2" |> Expect.equal "1.2")
             ]
-        , describe "Main.update"
+        , describe "update"
             [ fuzz float
                 "Increasing left hand side from 0"
                 (\float ->
@@ -82,8 +82,8 @@ suite =
                         operand =
                             String.fromFloat float
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
+                    init
+                        |> update (OperandPressed operand)
                         |> extractLeftHandSide
                         |> Expect.equal operand
                 )
@@ -94,11 +94,11 @@ suite =
                         operand =
                             String.fromFloat float
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.OperandPressed "2")
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (OperandPressed "2")
                         |> extractLeftHandSide
-                        |> Expect.equal (Main.incrementOperand operand "2")
+                        |> Expect.equal (incrementOperand operand "2")
                 )
             , fuzz float
                 "Negating the left hand side"
@@ -107,11 +107,11 @@ suite =
                         operand =
                             String.fromFloat float
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.MutatorPressed Main.Negate)
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (MutatorPressed Negate)
                         |> extractLeftHandSide
-                        |> Expect.equal (Main.mutate Main.Negate operand)
+                        |> Expect.equal (mutate Negate operand)
                 )
             , fuzz int
                 "Appending a decimal point to the lefthand side"
@@ -120,11 +120,11 @@ suite =
                         operand =
                             String.fromInt integer
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.MutatorPressed Main.AppendDecimalPoint)
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (MutatorPressed AppendDecimalPoint)
                         |> extractLeftHandSide
-                        |> Expect.equal (Main.mutate Main.AppendDecimalPoint operand)
+                        |> Expect.equal (mutate AppendDecimalPoint operand)
                 )
             , fuzz float
                 "Adding an operator"
@@ -133,11 +133,11 @@ suite =
                         operand =
                             String.fromFloat float
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Expect.equal (Main.AwaitingRightHandSide Main.Add (Main.incrementOperand operand "2"))
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> Expect.equal (AwaitingRightHandSide Add (incrementOperand operand "2"))
                 )
             , fuzz float
                 "Inputting a right hand side"
@@ -146,12 +146,12 @@ suite =
                         operand =
                             String.fromFloat float
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Expect.equal (Main.ReadyToEvaluate ( Main.Add, Main.incrementOperand operand "2", "2" ))
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "2")
+                        |> Expect.equal (ReadyToEvaluate ( Add, incrementOperand operand "2", "2" ))
                 )
             , fuzz float
                 "Negating the right hand side"
@@ -160,15 +160,15 @@ suite =
                         operand =
                             String.fromFloat float
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.MutatorPressed Main.Negate)
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "2")
+                        |> update (MutatorPressed Negate)
                         |> extractRightHandSide
                         |> Maybe.withDefault "0"
-                        |> Expect.equal (Main.mutate Main.Negate "2")
+                        |> Expect.equal (mutate Negate "2")
                 )
             , fuzz int
                 "Appending a decimal point to the right hand side"
@@ -177,15 +177,15 @@ suite =
                         operand =
                             String.fromInt integer
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.MutatorPressed Main.AppendDecimalPoint)
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "2")
+                        |> update (MutatorPressed AppendDecimalPoint)
                         |> extractRightHandSide
                         |> Maybe.withDefault "0"
-                        |> Expect.equal (Main.mutate Main.AppendDecimalPoint "2")
+                        |> Expect.equal (mutate AppendDecimalPoint "2")
                 )
             , fuzz float
                 "Evaluating an operation"
@@ -194,132 +194,132 @@ suite =
                         operand =
                             String.fromFloat float
                     in
-                    Main.init
-                        |> Main.update (Main.OperandPressed operand)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Add, Main.incrementOperand operand "2", "2" ) (Main.evaluate ( Main.Add, Main.incrementOperand operand "2", "2" )))
+                    init
+                        |> update (OperandPressed operand)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Equals)
+                        |> Expect.equal (Evaluated ( Add, incrementOperand operand "2", "2" ) (evaluate ( Add, incrementOperand operand "2", "2" )))
                 )
             , test
                 "Repeating an evaluation"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Divide)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Divide, "22", "2" ) (Main.evaluate ( Main.Divide, "22", "2" )))
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Divide)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Equals)
+                        |> update (OperatorPressed Equals)
+                        |> Expect.equal (Evaluated ( Divide, "22", "2" ) (evaluate ( Divide, "22", "2" )))
                 )
             , test
                 "Starting a new operation from a unevaluated one"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Divide)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Expect.equal (Main.AwaitingRightHandSide Main.Add "22")
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Divide)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> Expect.equal (AwaitingRightHandSide Add "22")
                 )
             , test
                 "Starting and then completing a new operation from a unevaluated one"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Divide)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Main.update (Main.OperandPressed "5")
-                        |> Expect.equal (Main.ReadyToEvaluate ( Main.Add, "22", "5" ))
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Divide)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "5")
+                        |> Expect.equal (ReadyToEvaluate ( Add, "22", "5" ))
                 )
             , test
                 "Evaluating an incomplete operation, just left hand side"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.LeftHandSide "44")
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Equals)
+                        |> Expect.equal (LeftHandSide "44")
                 )
             , test
                 "Shortcut to evaluation where left and right sides are the same"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Multiply)
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Multiply, "44", "44" ) (Main.evaluate ( Main.Multiply, "44", "44" )))
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Multiply)
+                        |> update (OperatorPressed Equals)
+                        |> Expect.equal (Evaluated ( Multiply, "44", "44" ) (evaluate ( Multiply, "44", "44" )))
                 )
             , test
                 "Negating the result of an evaluated operation"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Divide)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Main.update (Main.MutatorPressed Main.Negate)
-                        |> Expect.equal (Main.Evaluated ( Main.Divide, "44", "2" ) "-22")
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Divide)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Equals)
+                        |> update (MutatorPressed Negate)
+                        |> Expect.equal (Evaluated ( Divide, "44", "2" ) "-22")
                 )
             , test
                 "Evaluating a operation using the negated result of a previous operation"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Divide)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Main.update (Main.MutatorPressed Main.Negate)
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Main.update (Main.OperandPressed "5")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Add, "-22", "5" ) "-17")
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Divide)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Equals)
+                        |> update (MutatorPressed Negate)
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "5")
+                        |> update (OperatorPressed Equals)
+                        |> Expect.equal (Evaluated ( Add, "-22", "5" ) "-17")
                 )
             , test
                 "Appending a decimal point after evaluating an operation starts a new operation"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Divide)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Main.update (Main.MutatorPressed Main.AppendDecimalPoint)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Expect.equal (Main.LeftHandSide "0.22")
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Divide)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Equals)
+                        |> update (MutatorPressed AppendDecimalPoint)
+                        |> update (OperandPressed "2")
+                        |> update (OperandPressed "2")
+                        |> Expect.equal (LeftHandSide "0.22")
                 )
             , test
                 "Evaluating a new operation after starting a new one with appending a decimal point"
                 (\_ ->
-                    Main.init
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperandPressed "4")
-                        |> Main.update (Main.OperatorPressed Main.Divide)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Main.update (Main.MutatorPressed Main.AppendDecimalPoint)
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperandPressed "2")
-                        |> Main.update (Main.OperatorPressed Main.Add)
-                        |> Main.update (Main.OperandPressed "5")
-                        |> Main.update (Main.OperatorPressed Main.Equals)
-                        |> Expect.equal (Main.Evaluated ( Main.Add, "0.22", "5" ) "5.22")
+                    init
+                        |> update (OperandPressed "4")
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Divide)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Equals)
+                        |> update (MutatorPressed AppendDecimalPoint)
+                        |> update (OperandPressed "2")
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "5")
+                        |> update (OperatorPressed Equals)
+                        |> Expect.equal (Evaluated ( Add, "0.22", "5" ) "5.22")
                 )
             , test
                 "A user cannot create an operand longer than 16 digits"
                 (\_ ->
-                    Main.init
-                        |> executeNTimes 20 (Main.update (Main.OperandPressed "4"))
-                        |> Expect.equal (Main.LeftHandSide "4444444444444444")
+                    init
+                        |> executeNTimes 20 (update (OperandPressed "4"))
+                        |> Expect.equal (LeftHandSide "4444444444444444")
                 )
             ]
         ]
