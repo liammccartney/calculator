@@ -16,7 +16,7 @@ module Main exposing
 import Browser
 import Css
 import Css.Global
-import Decimal exposing (Decimal)
+import Decimal
 import Html.Styled as Html exposing (Html)
 import Html.Styled.Attributes as Html
 import Html.Styled.Events exposing (onClick)
@@ -42,6 +42,7 @@ type Operator
 type Mutator
     = Negate
     | AppendDecimalPoint
+    | Percentile
 
 
 type alias Operation =
@@ -126,20 +127,6 @@ update msg model =
                 Evaluated _ result ->
                     AwaitingRightHandSide newOperator result
 
-        MutatorPressed Negate ->
-            case model of
-                LeftHandSide left ->
-                    LeftHandSide (mutate Negate left)
-
-                AwaitingRightHandSide operator left ->
-                    AwaitingRightHandSide operator (mutate Negate left)
-
-                ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, mutate Negate right )
-
-                Evaluated operation result ->
-                    Evaluated operation (mutate Negate result)
-
         MutatorPressed AppendDecimalPoint ->
             case model of
                 LeftHandSide left ->
@@ -151,8 +138,22 @@ update msg model =
                 ReadyToEvaluate ( operator, left, right ) ->
                     ReadyToEvaluate ( operator, left, mutate AppendDecimalPoint right )
 
-                Evaluated operation result ->
+                Evaluated _ _ ->
                     LeftHandSide (mutate AppendDecimalPoint "0")
+
+        MutatorPressed mutator ->
+            case model of
+                LeftHandSide left ->
+                    LeftHandSide (mutate mutator left)
+
+                AwaitingRightHandSide operator left ->
+                    AwaitingRightHandSide operator (mutate mutator left)
+
+                ReadyToEvaluate ( operator, left, right ) ->
+                    ReadyToEvaluate ( operator, left, mutate mutator right )
+
+                Evaluated operation result ->
+                    Evaluated operation (mutate mutator result)
 
         AllClearPressed ->
             init
@@ -222,6 +223,9 @@ mutate mutator operand =
             else
                 operand ++ "."
 
+        Percentile ->
+            evaluate ( Divide, operand, "100" )
+
 
 incrementOperand : String -> String -> String
 incrementOperand current new =
@@ -274,6 +278,7 @@ view model =
             , cardViewEquals
             , cardViewMutator Negate "+/-"
             , cardViewMutator AppendDecimalPoint "."
+            , cardViewMutator Percentile "%"
             , clear model
             ]
             |> Html.Styled.Keyed.node "div"

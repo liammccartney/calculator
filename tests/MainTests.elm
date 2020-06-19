@@ -22,20 +22,44 @@ extractLeftHandSide model =
             left
 
 
-extractRightHandSide : Model -> Maybe String
+extractRightHandSide : Model -> String
 extractRightHandSide model =
-    case model of
-        LeftHandSide left ->
-            Nothing
+    let
+        rhs =
+            case model of
+                LeftHandSide left ->
+                    Nothing
 
-        AwaitingRightHandSide _ left ->
-            Nothing
+                AwaitingRightHandSide _ left ->
+                    Nothing
 
-        ReadyToEvaluate ( _, _, right ) ->
-            Just right
+                ReadyToEvaluate ( _, _, right ) ->
+                    Just right
 
-        Evaluated ( _, _, right ) _ ->
-            Just right
+                Evaluated ( _, _, right ) _ ->
+                    Just right
+    in
+    Maybe.withDefault "0" rhs
+
+
+extractResult : Model -> String
+extractResult model =
+    let
+        rhs =
+            case model of
+                LeftHandSide _ ->
+                    Nothing
+
+                AwaitingRightHandSide _ _ ->
+                    Nothing
+
+                ReadyToEvaluate _ ->
+                    Nothing
+
+                Evaluated ( _, _, _ ) result ->
+                    Just result
+    in
+    Maybe.withDefault "0" rhs
 
 
 executeNTimes : Int -> (a -> a) -> a -> a
@@ -73,6 +97,16 @@ suite =
         , describe "mutate AppendDecimalPoint"
             [ test "Adds a decimal point to the operand" (\_ -> mutate AppendDecimalPoint "0" |> Expect.equal "0.")
             , test "Does not add a decimal point if there already is one" (\_ -> mutate AppendDecimalPoint "1.2" |> Expect.equal "1.2")
+            ]
+        , describe "mutate Percentile"
+            [ fuzz float
+                "Divides an operand by 100"
+                (\float ->
+                    float
+                        |> String.fromFloat
+                        |> mutate Percentile
+                        |> Expect.equal (100 |> (/) float |> String.fromFloat)
+                )
             ]
         , describe "update"
             [ fuzz float
@@ -167,7 +201,6 @@ suite =
                         |> update (OperandPressed "2")
                         |> update (MutatorPressed Negate)
                         |> extractRightHandSide
-                        |> Maybe.withDefault "0"
                         |> Expect.equal (mutate Negate "2")
                 )
             , fuzz int
@@ -184,8 +217,31 @@ suite =
                         |> update (OperandPressed "2")
                         |> update (MutatorPressed AppendDecimalPoint)
                         |> extractRightHandSide
-                        |> Maybe.withDefault "0"
                         |> Expect.equal (mutate AppendDecimalPoint "2")
+                )
+            , test
+                "Percentiling the left hand side"
+                (\_ ->
+                    init
+                        |> update (OperandPressed "2")
+                        |> update (OperandPressed "2")
+                        |> update (MutatorPressed Percentile)
+                        |> extractLeftHandSide
+                        |> Expect.equal "0.22"
+                )
+            , test
+                "Percentiling the right hand side"
+                (\_ ->
+                    init
+                        |> update (OperandPressed "2")
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Multiply)
+                        |> update (OperandPressed "9")
+                        |> update (OperandPressed "0")
+                        |> update (OperandPressed "0")
+                        |> update (MutatorPressed Percentile)
+                        |> extractRightHandSide
+                        |> Expect.equal "9"
                 )
             , fuzz float
                 "Evaluating an operation"
@@ -313,6 +369,21 @@ suite =
                         |> update (OperandPressed "5")
                         |> update EqualsPressed
                         |> Expect.equal (Evaluated ( Add, "0.22", "5" ) "5.22")
+                )
+            , test
+                "Percentiling the result of an evaluated operation"
+                (\_ ->
+                    init
+                        |> update (OperandPressed "2")
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Multiply)
+                        |> update (OperandPressed "9")
+                        |> update (OperandPressed "0")
+                        |> update (OperandPressed "0")
+                        |> update EqualsPressed
+                        |> update (MutatorPressed Percentile)
+                        |> extractResult
+                        |> Expect.equal "198"
                 )
             , test
                 "A user cannot create an operand longer than 16 digits"
