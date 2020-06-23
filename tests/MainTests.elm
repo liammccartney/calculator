@@ -6,72 +6,6 @@ import Main exposing (..)
 import Test exposing (..)
 
 
-extractLeftHandSide : Model -> String
-extractLeftHandSide model =
-    case model of
-        LeftHandSide left ->
-            left
-
-        AwaitingRightHandSide _ left ->
-            left
-
-        ReadyToEvaluate ( _, left, _ ) ->
-            left
-
-        Evaluated ( _, left, _ ) _ ->
-            left
-
-
-extractRightHandSide : Model -> String
-extractRightHandSide model =
-    let
-        rhs =
-            case model of
-                LeftHandSide left ->
-                    Nothing
-
-                AwaitingRightHandSide _ left ->
-                    Nothing
-
-                ReadyToEvaluate ( _, _, right ) ->
-                    Just right
-
-                Evaluated ( _, _, right ) _ ->
-                    Just right
-    in
-    Maybe.withDefault "0" rhs
-
-
-extractResult : Model -> String
-extractResult model =
-    let
-        rhs =
-            case model of
-                LeftHandSide _ ->
-                    Nothing
-
-                AwaitingRightHandSide _ _ ->
-                    Nothing
-
-                ReadyToEvaluate _ ->
-                    Nothing
-
-                Evaluated ( _, _, _ ) result ->
-                    Just result
-    in
-    Maybe.withDefault "0" rhs
-
-
-executeNTimes : Int -> (a -> a) -> a -> a
-executeNTimes n func arg =
-    case n of
-        1 ->
-            func arg
-
-        _ ->
-            executeNTimes (n - 1) func (func arg)
-
-
 suite : Test
 suite =
     describe "The Main Module"
@@ -185,18 +119,13 @@ suite =
                         |> update (OperandPressed "2")
                         |> update (OperatorPressed Add)
                         |> update (OperandPressed "2")
-                        |> Expect.equal (ReadyToEvaluate ( Add, incrementOperand operand "2", "2" ))
+                        |> Expect.equal (EditingRightHandSide ( Add, incrementOperand operand "2", "2" ))
                 )
-            , fuzz float
+            , test
                 "Negating the right hand side"
-                (\float ->
-                    let
-                        operand =
-                            String.fromFloat float
-                    in
+                (\_ ->
                     init
-                        |> update (OperandPressed operand)
-                        |> update (OperandPressed "2")
+                        |> update (OperandPressed "1")
                         |> update (OperatorPressed Add)
                         |> update (OperandPressed "2")
                         |> update (MutatorPressed Negate)
@@ -291,7 +220,7 @@ suite =
                         |> update (OperandPressed "2")
                         |> update (OperatorPressed Add)
                         |> update (OperandPressed "5")
-                        |> Expect.equal (ReadyToEvaluate ( Add, "22", "5" ))
+                        |> Expect.equal (EditingRightHandSide ( Add, "22", "5" ))
                 )
             , test
                 "Evaluating an incomplete operation, just left hand side"
@@ -392,5 +321,104 @@ suite =
                         |> executeNTimes 20 (update (OperandPressed "4"))
                         |> Expect.equal (LeftHandSide "4444444444444444")
                 )
+            , test
+                "Editing the Left Hand Side"
+                (\_ ->
+                    init
+                        |> update (OperandPressed "1")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "9")
+                        |> update EqualsPressed
+                        |> update (OperandPressed "6")
+                        |> Expect.equal (EditingLeftHandSide ( Add, "6", "9" ))
+                )
+            , test
+                "Mutating the Left Hand Side"
+                (\_ ->
+                    init
+                        |> update (OperandPressed "1")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "9")
+                        |> update EqualsPressed
+                        |> update (OperandPressed "6")
+                        |> update (MutatorPressed AppendDecimalPoint)
+                        |> update (OperandPressed "5")
+                        |> Expect.equal (EditingLeftHandSide ( Add, "6.5", "9" ))
+                )
             ]
         ]
+
+
+extractLeftHandSide : Model -> String
+extractLeftHandSide model =
+    case model of
+        LeftHandSide left ->
+            left
+
+        AwaitingRightHandSide _ left ->
+            left
+
+        EditingLeftHandSide ( _, left, _ ) ->
+            left
+
+        EditingRightHandSide ( _, left, _ ) ->
+            left
+
+        Evaluated ( _, left, _ ) _ ->
+            left
+
+
+extractRightHandSide : Model -> String
+extractRightHandSide model =
+    let
+        rhs =
+            case model of
+                LeftHandSide left ->
+                    Nothing
+
+                AwaitingRightHandSide _ left ->
+                    Nothing
+
+                EditingLeftHandSide ( _, _, right ) ->
+                    Just right
+
+                EditingRightHandSide ( _, _, right ) ->
+                    Just right
+
+                Evaluated ( _, _, right ) _ ->
+                    Just right
+    in
+    Maybe.withDefault "0" rhs
+
+
+extractResult : Model -> String
+extractResult model =
+    let
+        rhs =
+            case model of
+                LeftHandSide _ ->
+                    Nothing
+
+                AwaitingRightHandSide _ _ ->
+                    Nothing
+
+                EditingRightHandSide _ ->
+                    Nothing
+
+                EditingLeftHandSide _ ->
+                    Nothing
+
+                Evaluated ( _, _, _ ) result ->
+                    Just result
+    in
+    Maybe.withDefault "0" rhs
+
+
+executeNTimes : Int -> (a -> a) -> a -> a
+executeNTimes n func arg =
+    case n of
+        1 ->
+            func arg
+
+        _ ->
+            executeNTimes (n - 1) func (func arg)
