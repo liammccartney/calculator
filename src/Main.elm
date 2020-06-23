@@ -52,7 +52,8 @@ type alias Operation =
 type Model
     = LeftHandSide String
     | AwaitingRightHandSide Operator String
-    | ReadyToEvaluate Operation
+    | EditingLeftHandSide Operation
+    | EditingRightHandSide Operation
     | Evaluated Operation String
 
 
@@ -83,13 +84,16 @@ update msg model =
                     LeftHandSide (incrementOperand left operand)
 
                 AwaitingRightHandSide operator left ->
-                    ReadyToEvaluate ( operator, left, operand )
+                    EditingRightHandSide ( operator, left, operand )
 
-                ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, incrementOperand right operand )
+                EditingLeftHandSide ( operator, left, right ) ->
+                    EditingLeftHandSide ( operator, incrementOperand left operand, right )
 
-                Evaluated _ _ ->
-                    LeftHandSide operand
+                EditingRightHandSide ( operator, left, right ) ->
+                    EditingRightHandSide ( operator, left, incrementOperand right operand )
+
+                Evaluated ( operator, left, right ) _ ->
+                    EditingLeftHandSide ( operator, operand, right )
 
         EqualsPressed ->
             case model of
@@ -103,7 +107,10 @@ update msg model =
                     in
                     Evaluated operation (evaluate operation)
 
-                ReadyToEvaluate operation ->
+                EditingLeftHandSide operation ->
+                    Evaluated operation (evaluate operation)
+
+                EditingRightHandSide operation ->
                     Evaluated operation (evaluate operation)
 
                 Evaluated ( operator, _, right ) result ->
@@ -121,7 +128,10 @@ update msg model =
                 AwaitingRightHandSide _ left ->
                     AwaitingRightHandSide newOperator left
 
-                ReadyToEvaluate operation ->
+                EditingLeftHandSide ( _, left, _ ) ->
+                    AwaitingRightHandSide newOperator left
+
+                EditingRightHandSide operation ->
                     AwaitingRightHandSide newOperator (evaluate operation)
 
                 Evaluated _ result ->
@@ -133,10 +143,13 @@ update msg model =
                     LeftHandSide (mutate AppendDecimalPoint left)
 
                 AwaitingRightHandSide operator left ->
-                    ReadyToEvaluate ( operator, left, mutate AppendDecimalPoint "0" )
+                    EditingRightHandSide ( operator, left, mutate AppendDecimalPoint "0" )
 
-                ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, mutate AppendDecimalPoint right )
+                EditingLeftHandSide ( operator, left, right ) ->
+                    EditingLeftHandSide ( operator, mutate AppendDecimalPoint left, right )
+
+                EditingRightHandSide ( operator, left, right ) ->
+                    EditingRightHandSide ( operator, left, mutate AppendDecimalPoint right )
 
                 Evaluated _ _ ->
                     LeftHandSide (mutate AppendDecimalPoint "0")
@@ -149,8 +162,11 @@ update msg model =
                 AwaitingRightHandSide operator left ->
                     AwaitingRightHandSide operator (mutate mutator left)
 
-                ReadyToEvaluate ( operator, left, right ) ->
-                    ReadyToEvaluate ( operator, left, mutate mutator right )
+                EditingLeftHandSide ( operator, left, right ) ->
+                    EditingLeftHandSide ( operator, mutate mutator left, right )
+
+                EditingRightHandSide ( operator, left, right ) ->
+                    EditingRightHandSide ( operator, left, mutate mutator right )
 
                 Evaluated operation result ->
                     Evaluated operation (mutate mutator result)
@@ -164,13 +180,16 @@ update msg model =
                     init
 
                 AwaitingRightHandSide operator left ->
-                    ReadyToEvaluate ( operator, left, "0" )
+                    EditingRightHandSide ( operator, left, "0" )
 
-                ReadyToEvaluate ( operator, left, _ ) ->
-                    ReadyToEvaluate ( operator, left, "0" )
+                EditingLeftHandSide ( operator, left, right ) ->
+                    EditingLeftHandSide ( operator, "0", right )
+
+                EditingRightHandSide ( operator, left, _ ) ->
+                    EditingRightHandSide ( operator, left, "0" )
 
                 Evaluated ( operator, _, right ) _ ->
-                    ReadyToEvaluate ( operator, right, "0" )
+                    EditingRightHandSide ( operator, right, "0" )
 
 
 evaluate : Operation -> String
@@ -264,7 +283,10 @@ view model =
                 AwaitingRightHandSide _ left ->
                     Html.text left
 
-                ReadyToEvaluate ( _, _, right ) ->
+                EditingLeftHandSide ( _, left, _ ) ->
+                    Html.text left
+
+                EditingRightHandSide ( _, _, right ) ->
                     Html.text right
 
                 Evaluated _ result ->
@@ -349,7 +371,22 @@ clear model =
                     [ Html.text "C" ]
                 )
 
-        ReadyToEvaluate ( _, _, right ) ->
+        EditingLeftHandSide ( _, left, _ ) ->
+            if isZero left then
+                ( "card clear"
+                , Html.div
+                    [ onClick AllClearPressed ]
+                    [ Html.text "AC" ]
+                )
+
+            else
+                ( "card clear"
+                , Html.div
+                    [ onClick ClearPressed ]
+                    [ Html.text "C" ]
+                )
+
+        EditingRightHandSide ( _, _, right ) ->
             if isZero right then
                 ( "card clear"
                 , Html.div
