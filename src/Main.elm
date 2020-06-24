@@ -221,8 +221,8 @@ incrementOperand current new =
             newValString =
                 current ++ new
         in
-        if String.length newValString > 16 then
-            current |> String.slice 0 16
+        if String.length newValString > 10 then
+            current |> String.slice 0 10
 
         else
             newValString
