@@ -24,3 +24,16 @@ mutate mutator operand =
 
         Percentile ->
             calculate Divide operand "100"
+
+
+toString : Mutator -> String
+toString mutator =
+    case mutator of
+        Negate ->
+            "+/-"
+
+        AppendDecimalPoint ->
+            "."
+
+        Percentile ->
+            "%"

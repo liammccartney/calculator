@@ -261,48 +261,106 @@ inputToString input =
 
 view : Model -> Html Msg
 view model =
-    Html.div []
-        [ Html.div [ Html.css displayTotalCss ]
-            [ Html.text (inputToString model.input)
+    Html.div [ Html.css calculatorContainerStyles ]
+        [ Html.div
+            [ Html.css displayTotalCss ]
+            [ Html.text (inputToString model.input) ]
+        , Html.div [ Html.css buttonsContainerStyles ]
+            [ -- TODO: Replace with Clear
+              mutatorButton Negate
+            , mutatorButton Negate
+            , mutatorButton Percentile
+            , operatorButton Divide
+            , operandButton "7"
+            , operandButton "8"
+            , operandButton "9"
+            , operatorButton Multiply
+            , operandButton "4"
+            , operandButton "5"
+            , operandButton "6"
+            , operatorButton Subtract
+            , operandButton "1"
+            , operandButton "2"
+            , operandButton "3"
+            , operatorButton Add
+            , zeroButton
+            , mutatorButton AppendDecimalPoint
+            , equalsButton
             ]
-        , List.append (List.map cardView allOperands)
-            [ cardViewOperator Add "+"
-            , cardViewOperator Subtract "-"
-            , cardViewOperator Multiply "X"
-            , cardViewOperator Divide "÷"
-            , cardViewEquals
-            , cardViewMutator Negate "+/-"
-            , cardViewMutator AppendDecimalPoint "."
-            , cardViewMutator Percentile "%"
-            ]
-            |> Html.Styled.Keyed.node "div"
-                [ Html.css css ]
         ]
 
 
 grey : Css.Color
 grey =
-    Css.hex "d8dee9"
+    Css.hex "6b6a69"
 
 
-displayTotalCss : List Css.Style
-displayTotalCss =
-    [ Css.width (Css.px 400)
-    , Css.margin2 Css.zero Css.auto
-    , Css.fontSize (Css.px 48)
-    , Css.textAlign Css.right
-    , Css.paddingRight (Css.px 60)
-    , Css.paddingTop (Css.px 60)
-    ]
+yellow : Css.Color
+yellow =
+    Css.hex "e0a225"
 
 
-cardView : String -> ( String, Html Msg )
-cardView operand =
-    ( "card" ++ operand
-    , Html.div
-        [ onClick (OperandPressed operand) ]
-        [ Html.text operand ]
-    )
+calculatorButton : Msg -> List Css.Style -> Html Msg
+calculatorButton msg styles =
+    let
+        displayText =
+            case msg of
+                OperandPressed operand ->
+                    operand
+
+                OperatorPressed operator ->
+                    Operator.toString operator
+
+                MutatorPressed mutator ->
+                    Mutator.toString mutator
+
+                EqualsPressed ->
+                    "="
+    in
+    Html.button
+        [ onClick msg
+        , Html.css
+            ([ Css.flexBasis <|
+                Css.pct 25
+             , Css.padding2 Css.zero (Css.px 8)
+             , Css.height (Css.px 65)
+             , Css.textAlign Css.center
+             , Css.fontSize (Css.px 24)
+             , Css.color <| Css.hex "fff"
+             , Css.backgroundColor grey
+             , Css.border3 (Css.px 0.5) Css.solid (Css.hex "000")
+             , Css.cursor Css.pointer
+             , Css.focus
+                [ Css.outline Css.none
+                ]
+             ]
+                ++ styles
+            )
+        ]
+        [ Html.text displayText ]
+
+
+operandButton : String -> Html Msg
+operandButton operand =
+    calculatorButton (OperandPressed operand) []
+
+
+operatorButton : OperatorType -> Html Msg
+operatorButton operator =
+    calculatorButton (OperatorPressed operator) [ Css.backgroundColor yellow ]
+
+
+mutatorButton : Mutator -> Html Msg
+mutatorButton mutator =
+    calculatorButton (MutatorPressed mutator) []
+
+
+zeroButton : Html Msg
+zeroButton =
+    calculatorButton (OperandPressed "0")
+        [ Css.flexGrow (Css.int 1)
+        , Css.borderBottomLeftRadius (Css.px 5)
+        ]
 
 
 isZero : String -> Bool
@@ -310,59 +368,44 @@ isZero operand =
     operand |> String.toFloat |> Maybe.withDefault 0 |> (==) 0
 
 
-cardViewOperator : OperatorType -> String -> ( String, Html Msg )
-cardViewOperator operator symbol =
-    ( "card" ++ symbol
-    , Html.div
-        [ onClick (OperatorPressed operator) ]
-        [ Html.text symbol ]
-    )
-
-
-cardViewEquals : ( String, Html Msg )
-cardViewEquals =
-    ( "card" ++ "="
-    , Html.div
-        [ onClick EqualsPressed ]
-        [ Html.text "=" ]
-    )
-
-
-cardViewMutator : Mutator -> String -> ( String, Html Msg )
-cardViewMutator mutator symbol =
-    ( "card" ++ symbol
-    , Html.div
-        [ onClick (MutatorPressed mutator) ]
-        [ Html.text symbol ]
-    )
+equalsButton : Html Msg
+equalsButton =
+    calculatorButton EqualsPressed
+        [ Css.backgroundColor yellow
+        , Css.borderBottomRightRadius (Css.px 5)
+        ]
 
 
 
 -- STYLES
 
 
-css : List Css.Style
-css =
+calculatorContainerStyles : List Css.Style
+calculatorContainerStyles =
+    [ Css.margin2 (Css.px 0) Css.auto
+    , Css.width <| Css.px 300
+    , Css.paddingTop (Css.px 80)
+    , Css.fontFamilies [ "Helvetica" ]
+    , Css.fontWeight Css.lighter
+    ]
+
+
+displayTotalCss : List Css.Style
+displayTotalCss =
+    [ Css.margin2 Css.zero Css.auto
+    , Css.fontSize (Css.px 48)
+    , Css.textAlign Css.right
+    , Css.padding4 (Css.px 15) (Css.px 10) (Css.px 0) (Css.px 5)
+    , Css.backgroundColor (Css.hex "595757")
+    , Css.color (Css.hex "fff")
+    , Css.borderRadius4 (Css.px 5) (Css.px 5) (Css.px 0) (Css.px 0)
+    ]
+
+
+buttonsContainerStyles : List Css.Style
+buttonsContainerStyles =
     [ Css.displayFlex
     , Css.flexWrap Css.wrap
     , Css.margin2 (Css.px 0) Css.auto
-    , Css.width <| Css.px 400
-    , Css.paddingTop <| Css.rem 1
-    , Css.Global.descendants
-        [ Css.Global.selector "> div"
-            [ Css.flexBasis <| Css.pct 20
-            , Css.padding2 Css.zero (Css.px 8)
-            , Css.height (Css.px 50)
-            , Css.textAlign Css.center
-            , Css.fontSize (Css.px 24)
-            , Css.margin (Css.rem 1)
-            , Css.backgroundColor grey
-            ]
-        , Css.Global.selector "> div > div"
-            [ Css.width <| Css.pct 100
-            ]
-        , Css.Global.selector ".zero"
-            [ Css.flexGrow (Css.int 1)
-            ]
-        ]
+    , Css.width <| Css.px 300
     ]
