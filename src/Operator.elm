@@ -45,26 +45,33 @@ calculate operator left right =
 
         rhs =
             right |> Decimal.fromString |> Maybe.withDefault Decimal.zero
+
+        result =
+            case operator of
+                Add ->
+                    Decimal.add lhs rhs |> Decimal.toString
+
+                Multiply ->
+                    Decimal.mul lhs rhs |> Decimal.toString
+
+                Subtract ->
+                    Decimal.sub lhs rhs |> Decimal.toString
+
+                Divide ->
+                    if isZero right then
+                        "Infinity"
+
+                    else
+                        rhs
+                            |> Decimal.fastdiv lhs
+                            |> Maybe.withDefault Decimal.zero
+                            |> Decimal.toString
     in
-    case operator of
-        Add ->
-            Decimal.add lhs rhs |> Decimal.toString
+    if String.endsWith ".0" result then
+        String.slice 0 -2 result
 
-        Multiply ->
-            Decimal.mul lhs rhs |> Decimal.toString
-
-        Subtract ->
-            Decimal.sub lhs rhs |> Decimal.toString
-
-        Divide ->
-            if isZero right then
-                "Infinity"
-
-            else
-                rhs
-                    |> Decimal.fastdiv lhs
-                    |> Maybe.withDefault Decimal.zero
-                    |> Decimal.toString
+    else
+        result
 
 
 isZero : String -> Bool
