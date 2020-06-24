@@ -24,11 +24,11 @@ main =
 
 
 type Input
-    = InputLeft Int
-    | NeedRight Int
-    | InputRight Int
-    | EagerEvaluated Int
-    | Evaluated Int
+    = InputLeft String
+    | NeedRight String
+    | InputRight String
+    | EagerEvaluated String
+    | Evaluated String
     | Empty
 
 
@@ -36,7 +36,7 @@ type alias Model =
     { input : Input
     , yard : ShuntingYard
     , previous : ShuntingYard
-    , evaluated : Result String Int
+    , evaluated : Result String String
     }
 
 
@@ -50,7 +50,7 @@ init =
 
 
 type Msg
-    = OperandPressed Int
+    = OperandPressed String
     | OperatorPressed OperatorType
     | EqualsPressed
 
@@ -84,9 +84,9 @@ update msg model =
                     case model.input of
                         Empty ->
                             ( model.yard
-                                |> ShuntingYard.appendOperand 0
+                                |> ShuntingYard.appendOperand "0"
                                 |> ShuntingYard.appendOperator operator
-                            , NeedRight 0
+                            , NeedRight "0"
                             )
 
                         InputLeft left ->
@@ -134,7 +134,7 @@ update msg model =
                     case model.input of
                         Empty ->
                             ( model.yard
-                            , Evaluated 0
+                            , Evaluated "0"
                             )
 
                         InputLeft operand ->
@@ -189,19 +189,10 @@ update msg model =
                     { model | input = input, evaluated = Err m }
 
 
-incrementOperand : Int -> Int -> Int
-incrementOperand c n =
-    let
-        current =
-            String.fromInt c
-
-        new =
-            String.fromInt n
-    in
+incrementOperand : String -> String -> String
+incrementOperand current new =
     if current == "0" then
         new
-            |> String.toInt
-            |> Maybe.withDefault 0
 
     else
         let
@@ -209,21 +200,19 @@ incrementOperand c n =
                 current ++ new
         in
         if String.length newValString > 16 then
-            current |> String.slice 0 16 |> String.toInt |> Maybe.withDefault 0
+            current |> String.slice 0 16
 
         else
             newValString
-                |> String.toInt
-                |> Maybe.withDefault 0
 
 
 
 -- VIEW
 
 
-allOperands : List Int
+allOperands : List String
 allOperands =
-    [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 ]
+    [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" ]
 
 
 viewEvaluation : Input -> String
@@ -233,19 +222,19 @@ viewEvaluation input =
             "0"
 
         InputLeft operand ->
-            String.fromInt operand
+            operand
 
         NeedRight operand ->
-            String.fromInt operand
+            operand
 
         InputRight operand ->
-            String.fromInt operand
+            operand
 
         EagerEvaluated result ->
-            String.fromInt result
+            result
 
         Evaluated result ->
-            String.fromInt result
+            result
 
 
 view : Model -> Html Msg
@@ -282,12 +271,12 @@ displayTotalCss =
     ]
 
 
-cardView : Int -> ( String, Html Msg )
+cardView : String -> ( String, Html Msg )
 cardView operand =
-    ( "card" ++ String.fromInt operand
+    ( "card" ++ operand
     , Html.div
         [ onClick (OperandPressed operand) ]
-        [ Html.text (String.fromInt operand) ]
+        [ Html.text operand ]
     )
 
 

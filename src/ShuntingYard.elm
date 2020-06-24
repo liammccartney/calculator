@@ -31,7 +31,7 @@ init =
     ShuntingYard RPN.emptyExpression []
 
 
-appendOperand : Int -> ShuntingYard -> ShuntingYard
+appendOperand : String -> ShuntingYard -> ShuntingYard
 appendOperand operand (ShuntingYard expression operatorStack) =
     ShuntingYard (RPN.appendOperand operand expression) operatorStack
 
@@ -61,12 +61,12 @@ replaceCurrentOperator operator (ShuntingYard expression operatorStack) =
             ShuntingYard expression (operator :: tail)
 
 
-evaluate : ShuntingYard -> Result String Int
+evaluate : ShuntingYard -> Result String String
 evaluate (ShuntingYard expression operatorStack) =
     RPN.evaluate (List.foldl RPN.appendOperator expression operatorStack)
 
 
-preemptiveEvaluate : ShuntingYard -> Result String Int
+preemptiveEvaluate : ShuntingYard -> Result String String
 preemptiveEvaluate (ShuntingYard expression operatorStack) =
     expression
         |> List.reverse
@@ -85,7 +85,7 @@ shiftCurrentOperandToExpression (ShuntingYard expression operatorStack) =
             ShuntingYard (RPN.appendOperator operator expression) operatorsTail
 
 
-currentOperand : ShuntingYard -> Int
+currentOperand : ShuntingYard -> String
 currentOperand (ShuntingYard expression operatorStack) =
     RPN.currentOperand expression
 

@@ -1,5 +1,6 @@
 module Operator exposing (OperatorType(..), calculate, findLesserOperators, findPrecedentOperators, toString)
 
+import Decimal
 import List.Extra
 
 
@@ -36,20 +37,39 @@ precedence operator =
             1
 
 
-calculate : OperatorType -> Int -> Int -> Int
+calculate : OperatorType -> String -> String -> String
 calculate operator left right =
+    let
+        lhs =
+            left |> Decimal.fromString |> Maybe.withDefault Decimal.zero
+
+        rhs =
+            right |> Decimal.fromString |> Maybe.withDefault Decimal.zero
+    in
     case operator of
         Add ->
-            left + right
-
-        Subtract ->
-            left - right
-
-        Divide ->
-            left // right
+            Decimal.add lhs rhs |> Decimal.toString
 
         Multiply ->
-            left * right
+            Decimal.mul lhs rhs |> Decimal.toString
+
+        Subtract ->
+            Decimal.sub lhs rhs |> Decimal.toString
+
+        Divide ->
+            if isZero right then
+                "Infinity"
+
+            else
+                rhs
+                    |> Decimal.fastdiv lhs
+                    |> Maybe.withDefault Decimal.zero
+                    |> Decimal.toString
+
+
+isZero : String -> Bool
+isZero operand =
+    operand |> String.toFloat |> Maybe.withDefault 0 |> (==) 0
 
 
 takesPrecedence : OperatorType -> OperatorType -> Bool
