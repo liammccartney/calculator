@@ -1,17 +1,4 @@
-module Main exposing
-    ( Model(..)
-    , Msg(..)
-    , Mutator(..)
-    , Operation
-    , Operator(..)
-    , evaluate
-    , incrementOperand
-    , init
-    , main
-    , mutate
-    , update
-    , view
-    )
+module Main exposing (..)
 
 import Browser
 import Css
@@ -21,6 +8,10 @@ import Html.Styled as Html exposing (Html)
 import Html.Styled.Attributes as Html
 import Html.Styled.Events exposing (onClick)
 import Html.Styled.Keyed
+import List.Extra
+import Operator exposing (OperatorType(..))
+import RPNExpression exposing (..)
+import ShuntingYard exposing (ShuntingYard)
 
 
 main : Program () Model Msg
@@ -32,34 +23,26 @@ main =
 -- MODEL
 
 
-type Operator
-    = Divide
-    | Multiply
-    | Subtract
-    | Add
+type Input
+    = InputLeft Int
+    | NeedRight Int
+    | InputRight Int
+    | EagerEvaluated Int
+    | Evaluated Int
+    | Empty
 
 
-type Mutator
-    = Negate
-    | AppendDecimalPoint
-    | Percentile
-
-
-type alias Operation =
-    ( Operator, String, String )
-
-
-type Model
-    = LeftHandSide String
-    | AwaitingRightHandSide Operator String
-    | EditingLeftHandSide Operation
-    | EditingRightHandSide Operation
-    | Evaluated Operation String
+type alias Model =
+    { input : Input
+    , yard : ShuntingYard
+    , previous : ShuntingYard
+    , evaluated : Result String Int
+    }
 
 
 init : Model
 init =
-    LeftHandSide "0"
+    Model Empty ShuntingYard.init ShuntingYard.init (Err "empty")
 
 
 
@@ -67,189 +50,158 @@ init =
 
 
 type Msg
-    = OperandPressed String
-    | OperatorPressed Operator
-    | MutatorPressed Mutator
+    = OperandPressed Int
+    | OperatorPressed OperatorType
     | EqualsPressed
-    | AllClearPressed
-    | ClearPressed
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
         OperandPressed operand ->
-            case model of
-                LeftHandSide left ->
-                    LeftHandSide (incrementOperand left operand)
+            case model.input of
+                Empty ->
+                    { model | input = InputLeft operand }
 
-                AwaitingRightHandSide operator left ->
-                    EditingRightHandSide ( operator, left, operand )
+                InputLeft currOperand ->
+                    { model | input = operand |> incrementOperand currOperand |> InputLeft }
 
-                EditingLeftHandSide ( operator, left, right ) ->
-                    EditingLeftHandSide ( operator, incrementOperand left operand, right )
+                NeedRight _ ->
+                    { model | input = operand |> InputRight }
 
-                EditingRightHandSide ( operator, left, right ) ->
-                    EditingRightHandSide ( operator, left, incrementOperand right operand )
+                InputRight currOperand ->
+                    { model | input = operand |> incrementOperand currOperand |> InputRight }
 
-                Evaluated ( operator, left, right ) _ ->
-                    EditingLeftHandSide ( operator, operand, right )
+                EagerEvaluated result ->
+                    { model | input = InputRight operand }
+
+                Evaluated result ->
+                    { model | input = InputLeft operand, yard = ShuntingYard.init }
+
+        OperatorPressed operator ->
+            let
+                ( yard, input ) =
+                    case model.input of
+                        Empty ->
+                            ( model.yard
+                                |> ShuntingYard.appendOperand 0
+                                |> ShuntingYard.appendOperator operator
+                            , NeedRight 0
+                            )
+
+                        InputLeft left ->
+                            ( model.yard
+                                |> ShuntingYard.appendOperand left
+                                |> ShuntingYard.appendOperator operator
+                            , NeedRight left
+                            )
+
+                        NeedRight left ->
+                            ( model.yard
+                                |> ShuntingYard.replaceCurrentOperator operator
+                            , NeedRight left
+                            )
+
+                        InputRight right ->
+                            ( model.yard
+                                |> ShuntingYard.appendOperand right
+                                |> ShuntingYard.appendOperator operator
+                            , NeedRight right
+                            )
+
+                        EagerEvaluated result ->
+                            ( model.yard
+                                |> ShuntingYard.replaceCurrentOperator operator
+                            , EagerEvaluated result
+                            )
+
+                        Evaluated result ->
+                            ( model.yard
+                                |> ShuntingYard.appendOperator operator
+                            , NeedRight result
+                            )
+            in
+            case ShuntingYard.preemptiveEvaluate yard of
+                Ok result ->
+                    { model | yard = yard, input = EagerEvaluated result, evaluated = Ok result }
+
+                Err _ ->
+                    { model | yard = yard, input = input, evaluated = Err "bad eval" }
 
         EqualsPressed ->
-            case model of
-                LeftHandSide _ ->
-                    model
+            let
+                ( yard, input ) =
+                    case model.input of
+                        Empty ->
+                            ( model.yard
+                            , Evaluated 0
+                            )
 
-                AwaitingRightHandSide operator left ->
-                    let
-                        operation =
-                            ( operator, left, left )
-                    in
-                    Evaluated operation (evaluate operation)
+                        InputLeft operand ->
+                            case ShuntingYard.currentOperator model.previous of
+                                Just operator ->
+                                    ( ShuntingYard.init
+                                        |> ShuntingYard.appendOperand operand
+                                        |> ShuntingYard.appendOperand (ShuntingYard.currentOperand model.previous)
+                                        |> ShuntingYard.appendOperator operator
+                                    , InputLeft operand
+                                    )
 
-                EditingLeftHandSide operation ->
-                    Evaluated operation (evaluate operation)
+                                Nothing ->
+                                    ( model.yard, Evaluated operand )
 
-                EditingRightHandSide operation ->
-                    Evaluated operation (evaluate operation)
+                        NeedRight operand ->
+                            ( model.yard
+                                |> ShuntingYard.appendOperand operand
+                            , NeedRight operand
+                            )
 
-                Evaluated ( operator, _, right ) result ->
-                    let
-                        newOperation =
-                            ( operator, result, right )
-                    in
-                    Evaluated newOperation (evaluate newOperation)
+                        InputRight operand ->
+                            ( model.yard
+                                |> ShuntingYard.appendOperand operand
+                            , InputRight operand
+                            )
 
-        OperatorPressed newOperator ->
-            case model of
-                LeftHandSide left ->
-                    AwaitingRightHandSide newOperator left
+                        EagerEvaluated result ->
+                            ( model.yard
+                                |> ShuntingYard.shiftCurrentOperandToExpression
+                                |> ShuntingYard.appendOperand result
+                            , EagerEvaluated result
+                            )
 
-                AwaitingRightHandSide _ left ->
-                    AwaitingRightHandSide newOperator left
+                        Evaluated result ->
+                            case ShuntingYard.currentOperator model.yard of
+                                Just operator ->
+                                    ( model.yard
+                                        |> ShuntingYard.appendOperator operator
+                                        |> ShuntingYard.appendOperand (ShuntingYard.currentOperand model.yard)
+                                    , Evaluated result
+                                    )
 
-                EditingLeftHandSide ( _, left, _ ) ->
-                    AwaitingRightHandSide newOperator left
+                                Nothing ->
+                                    ( model.yard, Evaluated result )
+            in
+            case ShuntingYard.evaluate yard of
+                Ok result ->
+                    { model | input = Evaluated result, yard = yard, evaluated = Ok result, previous = yard }
 
-                EditingRightHandSide operation ->
-                    AwaitingRightHandSide newOperator (evaluate operation)
-
-                Evaluated _ result ->
-                    AwaitingRightHandSide newOperator result
-
-        MutatorPressed AppendDecimalPoint ->
-            case model of
-                LeftHandSide left ->
-                    LeftHandSide (mutate AppendDecimalPoint left)
-
-                AwaitingRightHandSide operator left ->
-                    EditingRightHandSide ( operator, left, mutate AppendDecimalPoint "0" )
-
-                EditingLeftHandSide ( operator, left, right ) ->
-                    EditingLeftHandSide ( operator, mutate AppendDecimalPoint left, right )
-
-                EditingRightHandSide ( operator, left, right ) ->
-                    EditingRightHandSide ( operator, left, mutate AppendDecimalPoint right )
-
-                Evaluated _ _ ->
-                    LeftHandSide (mutate AppendDecimalPoint "0")
-
-        MutatorPressed mutator ->
-            case model of
-                LeftHandSide left ->
-                    LeftHandSide (mutate mutator left)
-
-                AwaitingRightHandSide operator left ->
-                    AwaitingRightHandSide operator (mutate mutator left)
-
-                EditingLeftHandSide ( operator, left, right ) ->
-                    EditingLeftHandSide ( operator, mutate mutator left, right )
-
-                EditingRightHandSide ( operator, left, right ) ->
-                    EditingRightHandSide ( operator, left, mutate mutator right )
-
-                Evaluated operation result ->
-                    Evaluated operation (mutate mutator result)
-
-        AllClearPressed ->
-            init
-
-        ClearPressed ->
-            case model of
-                LeftHandSide _ ->
-                    init
-
-                AwaitingRightHandSide operator left ->
-                    EditingRightHandSide ( operator, left, "0" )
-
-                EditingLeftHandSide ( operator, left, right ) ->
-                    EditingLeftHandSide ( operator, "0", right )
-
-                EditingRightHandSide ( operator, left, _ ) ->
-                    EditingRightHandSide ( operator, left, "0" )
-
-                Evaluated ( operator, _, right ) _ ->
-                    EditingRightHandSide ( operator, right, "0" )
+                Err m ->
+                    { model | input = input, evaluated = Err m }
 
 
-evaluate : Operation -> String
-evaluate ( operator, left, right ) =
+incrementOperand : Int -> Int -> Int
+incrementOperand c n =
     let
-        lhs =
-            left |> Decimal.fromString |> Maybe.withDefault Decimal.zero
+        current =
+            String.fromInt c
 
-        rhs =
-            right |> Decimal.fromString |> Maybe.withDefault Decimal.zero
+        new =
+            String.fromInt n
     in
-    case operator of
-        Add ->
-            Decimal.add lhs rhs |> Decimal.toString
-
-        Multiply ->
-            Decimal.mul lhs rhs |> Decimal.toString
-
-        Subtract ->
-            Decimal.sub lhs rhs |> Decimal.toString
-
-        Divide ->
-            if isZero right then
-                "Infinity"
-
-            else
-                rhs
-                    |> Decimal.fastdiv lhs
-                    |> Maybe.withDefault Decimal.zero
-                    |> Decimal.toString
-
-
-mutate : Mutator -> String -> String
-mutate mutator operand =
-    case mutator of
-        Negate ->
-            if String.startsWith "-" operand then
-                String.dropLeft 1 operand
-
-            else if isZero operand then
-                operand
-
-            else
-                "-" ++ operand
-
-        AppendDecimalPoint ->
-            if String.contains "." operand then
-                operand
-
-            else
-                operand ++ "."
-
-        Percentile ->
-            evaluate ( Divide, operand, "100" )
-
-
-incrementOperand : String -> String -> String
-incrementOperand current new =
     if current == "0" then
         new
+            |> String.toInt
+            |> Maybe.withDefault 0
 
     else
         let
@@ -257,40 +209,50 @@ incrementOperand current new =
                 current ++ new
         in
         if String.length newValString > 16 then
-            current |> String.slice 0 16
+            current |> String.slice 0 16 |> String.toInt |> Maybe.withDefault 0
 
         else
             newValString
+                |> String.toInt
+                |> Maybe.withDefault 0
 
 
 
 -- VIEW
 
 
-allOperands : List String
+allOperands : List Int
 allOperands =
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" ]
+    [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 ]
+
+
+viewEvaluation : Input -> String
+viewEvaluation input =
+    case input of
+        Empty ->
+            "0"
+
+        InputLeft operand ->
+            String.fromInt operand
+
+        NeedRight operand ->
+            String.fromInt operand
+
+        InputRight operand ->
+            String.fromInt operand
+
+        EagerEvaluated result ->
+            String.fromInt result
+
+        Evaluated result ->
+            String.fromInt result
 
 
 view : Model -> Html Msg
 view model =
     Html.div []
         [ Html.div [ Html.css displayTotalCss ]
-            [ case model of
-                LeftHandSide left ->
-                    Html.text left
-
-                AwaitingRightHandSide _ left ->
-                    Html.text left
-
-                EditingLeftHandSide ( _, left, _ ) ->
-                    Html.text left
-
-                EditingRightHandSide ( _, _, right ) ->
-                    Html.text right
-
-                Evaluated _ result ->
-                    Html.text result
+            [ Html.text (viewEvaluation model.input)
             ]
         , List.append (List.map cardView allOperands)
             [ cardViewOperator Add "+"
@@ -298,10 +260,6 @@ view model =
             , cardViewOperator Multiply "X"
             , cardViewOperator Divide "÷"
             , cardViewEquals
-            , cardViewMutator Negate "+/-"
-            , cardViewMutator AppendDecimalPoint "."
-            , cardViewMutator Percentile "%"
-            , clear model
             ]
             |> Html.Styled.Keyed.node "div"
                 [ Html.css css ]
@@ -324,12 +282,12 @@ displayTotalCss =
     ]
 
 
-cardView : String -> ( String, Html Msg )
+cardView : Int -> ( String, Html Msg )
 cardView operand =
-    ( "card" ++ operand
+    ( "card" ++ String.fromInt operand
     , Html.div
         [ onClick (OperandPressed operand) ]
-        [ Html.text operand ]
+        [ Html.text (String.fromInt operand) ]
     )
 
 
@@ -338,86 +296,7 @@ isZero operand =
     operand |> String.toFloat |> Maybe.withDefault 0 |> (==) 0
 
 
-clear : Model -> ( String, Html Msg )
-clear model =
-    case model of
-        LeftHandSide left ->
-            if isZero left then
-                ( "card clear"
-                , Html.div
-                    [ onClick AllClearPressed ]
-                    [ Html.text "AC" ]
-                )
-
-            else
-                ( "card clear"
-                , Html.div
-                    [ onClick ClearPressed ]
-                    [ Html.text "C" ]
-                )
-
-        AwaitingRightHandSide _ left ->
-            if isZero left then
-                ( "card clear"
-                , Html.div
-                    [ onClick AllClearPressed ]
-                    [ Html.text "AC" ]
-                )
-
-            else
-                ( "card clear"
-                , Html.div
-                    [ onClick ClearPressed ]
-                    [ Html.text "C" ]
-                )
-
-        EditingLeftHandSide ( _, left, _ ) ->
-            if isZero left then
-                ( "card clear"
-                , Html.div
-                    [ onClick AllClearPressed ]
-                    [ Html.text "AC" ]
-                )
-
-            else
-                ( "card clear"
-                , Html.div
-                    [ onClick ClearPressed ]
-                    [ Html.text "C" ]
-                )
-
-        EditingRightHandSide ( _, _, right ) ->
-            if isZero right then
-                ( "card clear"
-                , Html.div
-                    [ onClick AllClearPressed ]
-                    [ Html.text "AC" ]
-                )
-
-            else
-                ( "card clear"
-                , Html.div
-                    [ onClick ClearPressed ]
-                    [ Html.text "C" ]
-                )
-
-        Evaluated ( _, _, right ) _ ->
-            if isZero right then
-                ( "card clear"
-                , Html.div
-                    [ onClick AllClearPressed ]
-                    [ Html.text "AC" ]
-                )
-
-            else
-                ( "card clear"
-                , Html.div
-                    [ onClick ClearPressed ]
-                    [ Html.text "C" ]
-                )
-
-
-cardViewOperator : Operator -> String -> ( String, Html Msg )
+cardViewOperator : OperatorType -> String -> ( String, Html Msg )
 cardViewOperator operator symbol =
     ( "card" ++ symbol
     , Html.div
@@ -432,15 +311,6 @@ cardViewEquals =
     , Html.div
         [ onClick EqualsPressed ]
         [ Html.text "=" ]
-    )
-
-
-cardViewMutator : Mutator -> String -> ( String, Html Msg )
-cardViewMutator mutator symbol =
-    ( "card" ++ symbol
-    , Html.div
-        [ onClick (MutatorPressed mutator) ]
-        [ Html.text symbol ]
     )
 
 

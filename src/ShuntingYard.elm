@@ -1,4 +1,18 @@
-module ShuntingYard exposing (ShuntingYard, appendOperand, appendOperator, currentOperand, currentOperator, evaluate, extractExpression, extractOperatorStack, init, preemptiveEvaluate, replaceCurrentOperator)
+module ShuntingYard exposing
+    ( ShuntingYard
+    , appendOperand
+    , appendOperator
+    , currentOperand
+    , currentOperator
+    , evaluate
+    , extractExpression
+    , extractOperatorStack
+    , init
+    , preemptiveEvaluate
+    , replaceCurrentOperator
+    , shiftCurrentOperandToExpression
+    , toString
+    )
 
 import Operator exposing (OperatorType)
 import RPNExpression as RPN exposing (RPNExpression)
@@ -61,6 +75,16 @@ preemptiveEvaluate (ShuntingYard expression operatorStack) =
         |> RPN.evaluate
 
 
+shiftCurrentOperandToExpression : ShuntingYard -> ShuntingYard
+shiftCurrentOperandToExpression (ShuntingYard expression operatorStack) =
+    case operatorStack of
+        [] ->
+            ShuntingYard expression operatorStack
+
+        operator :: operatorsTail ->
+            ShuntingYard (RPN.appendOperator operator expression) operatorsTail
+
+
 currentOperand : ShuntingYard -> Int
 currentOperand (ShuntingYard expression operatorStack) =
     RPN.currentOperand expression
@@ -79,3 +103,8 @@ extractExpression (ShuntingYard expression _) =
 extractOperatorStack : ShuntingYard -> OperatorStack
 extractOperatorStack (ShuntingYard _ operatorStack) =
     operatorStack
+
+
+toString : ShuntingYard -> String
+toString (ShuntingYard expression operatorsStack) =
+    List.foldl RPN.appendOperator expression operatorsStack |> RPN.toString
