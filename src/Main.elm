@@ -9,6 +9,7 @@ import Html.Styled.Attributes as Html
 import Html.Styled.Events exposing (onClick)
 import Html.Styled.Keyed
 import List.Extra
+import Mutator exposing (Mutator(..), mutate)
 import Operator exposing (OperatorType(..))
 import RPNExpression exposing (..)
 import ShuntingYard exposing (ShuntingYard)
@@ -52,6 +53,7 @@ init =
 type Msg
     = OperandPressed String
     | OperatorPressed OperatorType
+    | MutatorPressed Mutator
     | EqualsPressed
 
 
@@ -127,6 +129,26 @@ update msg model =
 
                 Err _ ->
                     { model | yard = yard, input = input, evaluated = Err "bad eval" }
+
+        MutatorPressed mutator ->
+            case model.input of
+                Empty ->
+                    { model | input = InputLeft ("0" |> mutate mutator) }
+
+                InputLeft operand ->
+                    { model | input = InputLeft (operand |> mutate mutator) }
+
+                NeedRight operand ->
+                    { model | input = NeedRight (operand |> mutate mutator) }
+
+                InputRight operand ->
+                    { model | input = InputRight (operand |> mutate mutator) }
+
+                EagerEvaluated operand ->
+                    { model | input = EagerEvaluated (operand |> mutate mutator) }
+
+                Evaluated operand ->
+                    { model | input = Evaluated (operand |> mutate mutator) }
 
         EqualsPressed ->
             let
@@ -215,8 +237,8 @@ allOperands =
     [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" ]
 
 
-viewEvaluation : Input -> String
-viewEvaluation input =
+inputToString : Input -> String
+inputToString input =
     case input of
         Empty ->
             "0"
@@ -241,7 +263,7 @@ view : Model -> Html Msg
 view model =
     Html.div []
         [ Html.div [ Html.css displayTotalCss ]
-            [ Html.text (viewEvaluation model.input)
+            [ Html.text (inputToString model.input)
             ]
         , List.append (List.map cardView allOperands)
             [ cardViewOperator Add "+"
@@ -249,6 +271,9 @@ view model =
             , cardViewOperator Multiply "X"
             , cardViewOperator Divide "÷"
             , cardViewEquals
+            , cardViewMutator Negate "+/-"
+            , cardViewMutator AppendDecimalPoint "."
+            , cardViewMutator Percentile "%"
             ]
             |> Html.Styled.Keyed.node "div"
                 [ Html.css css ]
@@ -300,6 +325,15 @@ cardViewEquals =
     , Html.div
         [ onClick EqualsPressed ]
         [ Html.text "=" ]
+    )
+
+
+cardViewMutator : Mutator -> String -> ( String, Html Msg )
+cardViewMutator mutator symbol =
+    ( "card" ++ symbol
+    , Html.div
+        [ onClick (MutatorPressed mutator) ]
+        [ Html.text symbol ]
     )
 
 
