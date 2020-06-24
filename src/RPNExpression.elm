@@ -4,7 +4,7 @@ import Operator exposing (OperatorType, calculate)
 
 
 type Token
-    = Operand Int
+    = Operand String
     | Operator OperatorType
 
 
@@ -17,7 +17,7 @@ emptyExpression =
     []
 
 
-appendOperand : Int -> RPNExpression -> RPNExpression
+appendOperand : String -> RPNExpression -> RPNExpression
 appendOperand operand expression =
     expression ++ [ Operand operand ]
 
@@ -27,13 +27,13 @@ appendOperator operator expression =
     expression ++ [ Operator operator ]
 
 
-currentOperand : RPNExpression -> Int
+currentOperand : RPNExpression -> String
 currentOperand expression =
     let
         findOperand exp =
             case exp of
                 [] ->
-                    0
+                    "0"
 
                 (Operand operand) :: _ ->
                     operand
@@ -46,7 +46,7 @@ currentOperand expression =
         |> findOperand
 
 
-evaluate : RPNExpression -> Result String Int
+evaluate : RPNExpression -> Result String String
 evaluate expression =
     let
         evaluateFunc exp stack =
@@ -83,8 +83,8 @@ toString =
         << List.map
             (\token ->
                 case token of
-                    Operand int ->
-                        String.fromInt int
+                    Operand operand ->
+                        operand
 
                     Operator operator ->
                         Operator.toString operator
