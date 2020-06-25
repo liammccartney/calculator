@@ -384,6 +384,7 @@ calculatorButton msg styles =
              , Css.backgroundColor grey
              , Css.border3 (Css.px 0.5) Css.solid (Css.hex "000")
              , Css.cursor Css.pointer
+             , Css.margin Css.zero
              , Css.focus
                 [ Css.outline Css.none
                 ]
