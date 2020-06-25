@@ -98,7 +98,7 @@ update msg model =
         MutatorPressed mutator ->
             case model.input of
                 Empty ->
-                    model
+                    { model | input = Operand (mutate mutator "0") }
 
                 Operand operand ->
                     { model | input = Operand (mutate mutator operand) }
