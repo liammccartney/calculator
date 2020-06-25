@@ -59,7 +59,7 @@ update msg model =
                     { model | input = Operand operand }
 
                 Operand currOperand ->
-                    { model | input = Operand (incrementOperand currOperand operand) }
+                    { model | input = Operand (appendToOperand currOperand operand) }
 
                 Operator operator ->
                     { model
@@ -188,8 +188,12 @@ update msg model =
             init
 
 
-incrementOperand : String -> String -> String
-incrementOperand current new =
+{-| appendToOperand
+Appends and operand to another one.
+Constrains the result to 10 characters long to avoid values longer than the screen can display
+-}
+appendToOperand : String -> String -> String
+appendToOperand current new =
     if current == "0" then
         new
 
