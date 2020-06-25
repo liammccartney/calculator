@@ -6,6 +6,15 @@ Using this algorithm allows the calculator to be a bit more sophisicated when it
 One of my primary goals while implementing the alogrithm was to take advantage of elm's type system as much as possible in an effort to effectively constrain the possible states.
 This complicated the application code to a high degree, I have done my best to go through an leave meaningful comments.
 
+### Getting Started
+To get started you only need the following commands
+```bash
+$ npm install
+$ npm start
+```
+`npm install` will install a local version of elm to your project, along with elm-live, which is a simple package for building and serving elm projects.
+`npm start` will spin up the elm-live server, which will build the project and serve it at http://localhost:8000.
+
 ### Some Concessions
 I made two concessions to get this project done.
   1. There is only one clear button that clears the entire working operation, and reinitializes the application back to an empty starting state. I was finding it very difficult to separate between the states created by the clear and all-clear buttons. At least within the context of my data model.
