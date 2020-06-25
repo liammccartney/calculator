@@ -354,11 +354,6 @@ zeroButton =
         ]
 
 
-isZero : String -> Bool
-isZero operand =
-    operand |> String.toFloat |> Maybe.withDefault 0 |> (==) 0
-
-
 equalsButton : Html Msg
 equalsButton =
     calculatorButton EqualsPressed
