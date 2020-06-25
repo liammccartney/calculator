@@ -83,7 +83,7 @@ suite =
                         |> appendOperator Multiply
                         |> appendOperand "10"
                         |> evaluate
-                        |> Expect.equal (Err "Evaluation Failure: Too Few Operators")
+                        |> Expect.equal (Err "Evaluation Failure")
                 )
             , test "It returns an error for an invalid RPN expression, expression too short"
                 (\_ ->
@@ -91,7 +91,7 @@ suite =
                         |> appendOperand "60"
                         |> appendOperator Divide
                         |> evaluate
-                        |> Expect.equal (Err "Evaluation Failure: Expression Too Short")
+                        |> Expect.equal (Err "Evaluation Failure")
                 )
             ]
         ]

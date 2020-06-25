@@ -98,8 +98,8 @@ suite =
                         |> Expect.equal "36"
                 )
             ]
-        , describe "preemptiveEvaluate"
-            [ test "It attempts to evaluate the last 3 tokens of the expression"
+        , describe "evaluateExpression"
+            [ test "It eagerly evaluates as much of the expression as it can"
                 (\_ ->
                     SY.init
                         |> SY.appendOperand "3"
@@ -108,11 +108,11 @@ suite =
                         |> SY.appendOperator Multiply
                         |> SY.appendOperand "2"
                         |> SY.appendOperator Divide
-                        |> SY.preemptiveEvaluate
+                        |> SY.evaluateExpression
                         |> Result.withDefault "0"
                         |> Expect.equal "8"
                 )
-            , test "It fails gracefully for invalid expression"
+            , test "It returns the working operand if the expression is incomplete"
                 (\_ ->
                     SY.init
                         |> SY.appendOperand "3"
@@ -120,8 +120,8 @@ suite =
                         |> SY.appendOperand "4"
                         |> SY.appendOperator Multiply
                         |> SY.appendOperand "2"
-                        |> SY.preemptiveEvaluate
-                        |> Expect.equal (Err "Evaluation Failure: Too Few Operators")
+                        |> SY.evaluateExpression
+                        |> Expect.equal (Ok "2")
                 )
             ]
         , describe "currentOperand"

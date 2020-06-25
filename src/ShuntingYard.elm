@@ -4,11 +4,14 @@ module ShuntingYard exposing
     , appendOperator
     , currentOperand
     , currentOperator
+    , eagerEvaluate
     , evaluate
+    , evaluateExpression
     , extractExpression
     , extractOperatorStack
     , init
-    , preemptiveEvaluate
+    , repeat
+    , repeatWith
     , replaceCurrentOperator
     , shiftCurrentOperandToExpression
     , toString
@@ -66,13 +69,14 @@ evaluate (ShuntingYard expression operatorStack) =
     RPN.evaluate (List.foldl RPN.appendOperator expression operatorStack)
 
 
-preemptiveEvaluate : ShuntingYard -> Result String String
-preemptiveEvaluate (ShuntingYard expression operatorStack) =
-    expression
-        |> List.reverse
-        |> List.take 3
-        |> List.reverse
-        |> RPN.evaluate
+eagerEvaluate : ShuntingYard -> Result String String
+eagerEvaluate (ShuntingYard expression operatorStack) =
+    RPN.eagerEvaluate (List.foldl RPN.appendOperator expression operatorStack)
+
+
+evaluateExpression : ShuntingYard -> Result String String
+evaluateExpression (ShuntingYard expression operatorStack) =
+    RPN.eagerEvaluate expression
 
 
 shiftCurrentOperandToExpression : ShuntingYard -> ShuntingYard
@@ -96,13 +100,46 @@ currentOperator (ShuntingYard _ operatorStack) =
 
 
 extractExpression : ShuntingYard -> RPN.RPNExpression
-extractExpression (ShuntingYard expression _) =
+extractExpression (ShuntingYard expression operatorsStack) =
     expression
 
 
 extractOperatorStack : ShuntingYard -> OperatorStack
 extractOperatorStack (ShuntingYard _ operatorStack) =
     operatorStack
+
+
+repeat : ShuntingYard -> ShuntingYard
+repeat (ShuntingYard expression operatorStack) =
+    let
+        operand =
+            RPN.currentOperand expression
+    in
+    case List.head operatorStack of
+        Just operator ->
+            ShuntingYard expression operatorStack
+                |> appendOperator operator
+                |> appendOperand operand
+
+        Nothing ->
+            ShuntingYard expression operatorStack
+
+
+repeatWith : String -> ShuntingYard -> ShuntingYard
+repeatWith operand (ShuntingYard expression operatorStack) =
+    let
+        currOperand =
+            RPN.currentOperand expression
+    in
+    case List.head operatorStack of
+        Just operator ->
+            init
+                |> appendOperand operand
+                |> appendOperand currOperand
+                |> appendOperator operator
+
+        Nothing ->
+            ShuntingYard expression operatorStack
 
 
 toString : ShuntingYard -> String

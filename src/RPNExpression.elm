@@ -1,4 +1,15 @@
-module RPNExpression exposing (RPNExpression, Token, appendOperand, appendOperator, currentOperand, emptyExpression, evaluate, toString)
+module RPNExpression exposing
+    ( RPNExpression
+    , Token
+    , appendOperand
+    , appendOperator
+    , currentOperand
+    , eagerEvaluate
+    , emptyExpression
+    , evaluate
+    , evaluateImpl
+    , toString
+    )
 
 import Operator exposing (OperatorType, calculate)
 
@@ -46,35 +57,43 @@ currentOperand expression =
         |> findOperand
 
 
+evaluateImpl : List String -> RPNExpression -> List String
+evaluateImpl stack exp =
+    case exp of
+        (Operator operator) :: expressionTail ->
+            case stack of
+                right :: left :: stackTail ->
+                    expressionTail
+                        |> evaluateImpl (calculate operator left right :: stackTail)
+
+                _ ->
+                    evaluateImpl [] expressionTail
+
+        (Operand operand) :: expressionTail ->
+            evaluateImpl (operand :: stack) expressionTail
+
+        [] ->
+            stack
+
+
 evaluate : RPNExpression -> Result String String
 evaluate expression =
-    let
-        evaluateFunc exp stack =
-            case exp of
-                (Operator operator) :: expressionTail ->
-                    case stack of
-                        right :: left :: stackTail ->
-                            evaluateFunc expressionTail (calculate operator left right :: stackTail)
+    case evaluateImpl [] expression of
+        result :: [] ->
+            Ok result
 
-                        _ ->
-                            Err "Evaluation Failure: Too Few Operands"
+        _ ->
+            Err "Evaluation Failure"
 
-                (Operand operand) :: expressionTail ->
-                    evaluateFunc expressionTail (operand :: stack)
 
-                [] ->
-                    case stack of
-                        result :: [] ->
-                            Ok result
+eagerEvaluate : RPNExpression -> Result String String
+eagerEvaluate expression =
+    case evaluateImpl [] expression of
+        result :: _ ->
+            Ok result
 
-                        _ ->
-                            Err "Evaluation Failure: Too Few Operators"
-    in
-    if List.length expression >= 3 then
-        evaluateFunc expression []
-
-    else
-        Err "Evaluation Failure: Expression Too Short"
+        _ ->
+            Err "Evaluation Failure"
 
 
 toString : RPNExpression -> String

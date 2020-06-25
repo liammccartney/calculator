@@ -25,25 +25,22 @@ main =
 
 
 type Input
-    = InputLeft String
-    | NeedRight String
-    | InputRight String
-    | EagerEvaluated String
-    | Evaluated String
+    = Operand String
+    | Operator OperatorType
+    | Evaluated ShuntingYard
     | Empty
 
 
 type alias Model =
     { input : Input
     , yard : ShuntingYard
-    , previous : ShuntingYard
-    , evaluated : Result String String
+    , previous : Maybe ShuntingYard
     }
 
 
 init : Model
 init =
-    Model Empty ShuntingYard.init ShuntingYard.init (Err "empty")
+    Model Empty ShuntingYard.init Nothing
 
 
 
@@ -63,152 +60,133 @@ update msg model =
         OperandPressed operand ->
             case model.input of
                 Empty ->
-                    { model | input = InputLeft operand }
+                    { model | input = Operand operand }
 
-                InputLeft currOperand ->
-                    { model | input = operand |> incrementOperand currOperand |> InputLeft }
+                Operand currOperand ->
+                    { model | input = Operand (incrementOperand currOperand operand) }
 
-                NeedRight _ ->
-                    { model | input = operand |> InputRight }
-
-                InputRight currOperand ->
-                    { model | input = operand |> incrementOperand currOperand |> InputRight }
-
-                EagerEvaluated result ->
-                    { model | input = InputRight operand }
+                Operator operator ->
+                    { model
+                        | yard =
+                            model.yard
+                                |> ShuntingYard.appendOperator operator
+                        , input = Operand operand
+                    }
 
                 Evaluated result ->
-                    { model | input = InputLeft operand, yard = ShuntingYard.init }
+                    { model | input = Operand operand, previous = Just result }
 
         OperatorPressed operator ->
-            let
-                ( yard, input ) =
-                    case model.input of
-                        Empty ->
-                            ( model.yard
-                                |> ShuntingYard.appendOperand "0"
-                                |> ShuntingYard.appendOperator operator
-                            , NeedRight "0"
-                            )
+            case model.input of
+                Empty ->
+                    { model | input = Operator operator }
 
-                        InputLeft left ->
-                            ( model.yard
-                                |> ShuntingYard.appendOperand left
-                                |> ShuntingYard.appendOperator operator
-                            , NeedRight left
-                            )
+                Operand currOperand ->
+                    { model
+                        | yard =
+                            model.yard
+                                |> ShuntingYard.appendOperand currOperand
+                        , input = Operator operator
+                        , previous = Nothing
+                    }
 
-                        NeedRight left ->
-                            ( model.yard
-                                |> ShuntingYard.replaceCurrentOperator operator
-                            , NeedRight left
-                            )
+                Operator currOperator ->
+                    { model | input = Operator operator }
 
-                        InputRight right ->
-                            ( model.yard
-                                |> ShuntingYard.appendOperand right
-                                |> ShuntingYard.appendOperator operator
-                            , NeedRight right
-                            )
-
-                        EagerEvaluated result ->
-                            ( model.yard
-                                |> ShuntingYard.replaceCurrentOperator operator
-                            , EagerEvaluated result
-                            )
-
-                        Evaluated result ->
-                            ( model.yard
-                                |> ShuntingYard.appendOperator operator
-                            , NeedRight result
-                            )
-            in
-            case ShuntingYard.preemptiveEvaluate yard of
-                Ok result ->
-                    { model | yard = yard, input = EagerEvaluated result, evaluated = Ok result }
-
-                Err _ ->
-                    { model | yard = yard, input = input, evaluated = Err "bad eval" }
+                Evaluated yard ->
+                    { model
+                        | input = Operator operator
+                        , yard = yard
+                    }
 
         MutatorPressed mutator ->
             case model.input of
                 Empty ->
-                    { model | input = InputLeft ("0" |> mutate mutator) }
+                    model
 
-                InputLeft operand ->
-                    { model | input = InputLeft (operand |> mutate mutator) }
+                Operand operand ->
+                    { model | input = Operand (mutate mutator operand) }
 
-                NeedRight operand ->
-                    { model | input = NeedRight (operand |> mutate mutator) }
+                Operator operator ->
+                    let
+                        currOperand =
+                            model.yard |> ShuntingYard.currentOperand
+                    in
+                    { model | input = Operand (mutate mutator currOperand) }
 
-                InputRight operand ->
-                    { model | input = InputRight (operand |> mutate mutator) }
-
-                EagerEvaluated operand ->
-                    { model | input = EagerEvaluated (operand |> mutate mutator) }
-
-                Evaluated operand ->
-                    { model | input = Evaluated (operand |> mutate mutator) }
+                Evaluated yard ->
+                    let
+                        result =
+                            yard |> ShuntingYard.evaluate |> Result.withDefault "0"
+                    in
+                    { model | input = Operand (mutate mutator result) }
 
         EqualsPressed ->
-            let
-                ( yard, input ) =
-                    case model.input of
-                        Empty ->
-                            ( model.yard
-                            , Evaluated "0"
-                            )
+            case model.input of
+                Empty ->
+                    { model
+                        | yard =
+                            model.yard
+                                |> ShuntingYard.repeat
+                        , input = Empty
+                    }
 
-                        InputLeft operand ->
-                            case ShuntingYard.currentOperator model.previous of
-                                Just operator ->
-                                    ( ShuntingYard.init
-                                        |> ShuntingYard.appendOperand operand
-                                        |> ShuntingYard.appendOperand (ShuntingYard.currentOperand model.previous)
+                Operand operand ->
+                    case model.previous of
+                        Just previous ->
+                            let
+                                yard =
+                                    previous
+                                        |> ShuntingYard.repeatWith operand
+                            in
+                            { model
+                                | yard = ShuntingYard.init
+                                , input = Evaluated yard
+                                , previous = Just yard
+                            }
+
+                        Nothing ->
+                            { model
+                                | yard = ShuntingYard.init
+                                , input =
+                                    Evaluated <|
+                                        ShuntingYard.appendOperand operand <|
+                                            model.yard
+                            }
+
+                Operator operator ->
+                    let
+                        yard =
+                            model.yard |> ShuntingYard.appendOperator operator
+                    in
+                    case ShuntingYard.evaluateExpression yard of
+                        Ok result ->
+                            { model
+                                | yard =
+                                    model.yard
                                         |> ShuntingYard.appendOperator operator
-                                    , InputLeft operand
-                                    )
+                                        |> ShuntingYard.appendOperand result
+                                , input = Empty
+                                , previous = Nothing
+                            }
 
-                                Nothing ->
-                                    ( model.yard, Evaluated operand )
-
-                        NeedRight operand ->
-                            ( model.yard
-                                |> ShuntingYard.appendOperand operand
-                            , NeedRight operand
-                            )
-
-                        InputRight operand ->
-                            ( model.yard
-                                |> ShuntingYard.appendOperand operand
-                            , InputRight operand
-                            )
-
-                        EagerEvaluated result ->
-                            ( model.yard
-                                |> ShuntingYard.shiftCurrentOperandToExpression
-                                |> ShuntingYard.appendOperand result
-                            , EagerEvaluated result
-                            )
-
-                        Evaluated result ->
-                            case ShuntingYard.currentOperator model.yard of
-                                Just operator ->
-                                    ( model.yard
+                        Err _ ->
+                            { model
+                                | yard =
+                                    model.yard
                                         |> ShuntingYard.appendOperator operator
-                                        |> ShuntingYard.appendOperand (ShuntingYard.currentOperand model.yard)
-                                    , Evaluated result
-                                    )
+                                , input = Empty
+                                , previous = Nothing
+                            }
 
-                                Nothing ->
-                                    ( model.yard, Evaluated result )
-            in
-            case ShuntingYard.evaluate yard of
-                Ok result ->
-                    { model | input = Evaluated result, yard = yard, evaluated = Ok result, previous = yard }
-
-                Err m ->
-                    { model | input = input, evaluated = Err m }
+                Evaluated yard ->
+                    { model
+                        | yard =
+                            yard
+                                |> ShuntingYard.repeat
+                        , input = Empty
+                        , previous = Nothing
+                    }
 
 
 incrementOperand : String -> String -> String
@@ -232,31 +210,39 @@ incrementOperand current new =
 -- VIEW
 
 
-allOperands : List String
-allOperands =
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" ]
+display : Model -> String
+display model =
+    case model.input of
+        Operand operand ->
+            operand
 
+        Evaluated yard ->
+            case ShuntingYard.eagerEvaluate yard of
+                Ok result ->
+                    result
 
-inputToString : Input -> String
-inputToString input =
-    case input of
+                Err _ ->
+                    ShuntingYard.currentOperand yard
+
+        Operator operator ->
+            let
+                yard =
+                    model.yard |> ShuntingYard.appendOperator operator
+            in
+            case ShuntingYard.evaluateExpression yard of
+                Ok result ->
+                    result
+
+                Err _ ->
+                    ShuntingYard.currentOperand yard
+
         Empty ->
-            "0"
+            case ShuntingYard.evaluate model.yard of
+                Ok result ->
+                    result
 
-        InputLeft operand ->
-            operand
-
-        NeedRight operand ->
-            operand
-
-        InputRight operand ->
-            operand
-
-        EagerEvaluated result ->
-            result
-
-        Evaluated result ->
-            result
+                Err _ ->
+                    ShuntingYard.currentOperand model.yard
 
 
 view : Model -> Html Msg
@@ -264,7 +250,7 @@ view model =
     Html.div [ Html.css calculatorContainerStyles ]
         [ Html.div
             [ Html.css displayTotalCss ]
-            [ Html.text (inputToString model.input) ]
+            [ Html.text (display model) ]
         , Html.div [ Html.css buttonsContainerStyles ]
             [ -- TODO: Replace with Clear
               mutatorButton Negate
