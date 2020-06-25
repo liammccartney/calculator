@@ -1,6 +1,6 @@
 module OperatorTests exposing (..)
 
-import Expect exposing (Expectation, FloatingPointTolerance(..))
+import Expect
 import Operator exposing (..)
 import Test exposing (..)
 

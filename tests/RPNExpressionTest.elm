@@ -1,6 +1,6 @@
 module RPNExpressionTest exposing (..)
 
-import Expect exposing (Expectation, FloatingPointTolerance(..))
+import Expect
 import Operator exposing (..)
 import RPNExpression exposing (..)
 import Test exposing (..)

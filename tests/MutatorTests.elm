@@ -1,6 +1,6 @@
 module MutatorTests exposing (..)
 
-import Expect exposing (Expectation, FloatingPointTolerance(..))
+import Expect
 import Mutator exposing (..)
 import Test exposing (..)
 

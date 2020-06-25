@@ -1,11 +1,9 @@
 module MainTests exposing (..)
 
-import Expect exposing (Expectation, FloatingPointTolerance(..))
+import Expect
 import Main exposing (..)
 import Mutator exposing (..)
 import Operator exposing (..)
-import RPNExpression as RPN
-import ShuntingYard
 import Test exposing (..)
 
 

@@ -12,8 +12,6 @@ module ShuntingYard exposing
     , init
     , repeat
     , repeatWith
-    , replaceCurrentOperator
-    , shiftCurrentOperandToExpression
     , toString
     )
 
@@ -54,16 +52,6 @@ appendOperator operator (ShuntingYard expression operatorStack) =
     ShuntingYard newExpression (operator :: remainingOperators)
 
 
-replaceCurrentOperator : OperatorType -> ShuntingYard -> ShuntingYard
-replaceCurrentOperator operator (ShuntingYard expression operatorStack) =
-    case operatorStack of
-        [] ->
-            ShuntingYard expression [ operator ]
-
-        head :: tail ->
-            ShuntingYard expression (operator :: tail)
-
-
 evaluate : ShuntingYard -> Result String String
 evaluate (ShuntingYard expression operatorStack) =
     RPN.evaluate (List.foldl RPN.appendOperator expression operatorStack)
@@ -75,22 +63,12 @@ eagerEvaluate (ShuntingYard expression operatorStack) =
 
 
 evaluateExpression : ShuntingYard -> Result String String
-evaluateExpression (ShuntingYard expression operatorStack) =
+evaluateExpression (ShuntingYard expression _) =
     RPN.eagerEvaluate expression
 
 
-shiftCurrentOperandToExpression : ShuntingYard -> ShuntingYard
-shiftCurrentOperandToExpression (ShuntingYard expression operatorStack) =
-    case operatorStack of
-        [] ->
-            ShuntingYard expression operatorStack
-
-        operator :: operatorsTail ->
-            ShuntingYard (RPN.appendOperator operator expression) operatorsTail
-
-
 currentOperand : ShuntingYard -> String
-currentOperand (ShuntingYard expression operatorStack) =
+currentOperand (ShuntingYard expression _) =
     RPN.currentOperand expression
 
 
@@ -100,7 +78,7 @@ currentOperator (ShuntingYard _ operatorStack) =
 
 
 extractExpression : ShuntingYard -> RPN.RPNExpression
-extractExpression (ShuntingYard expression operatorsStack) =
+extractExpression (ShuntingYard expression _) =
     expression
 
 

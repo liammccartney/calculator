@@ -1,6 +1,6 @@
 module ShuntingYardTests exposing (..)
 
-import Expect exposing (Expectation, FloatingPointTolerance(..))
+import Expect
 import Operator exposing (..)
 import RPNExpression as RPN
 import ShuntingYard as SY
@@ -65,25 +65,6 @@ suite =
                         |> SY.extractExpression
                         |> RPN.toString
                         |> Expect.equal "4 5 3 *"
-                )
-            ]
-        , describe "replaceCurrentOperator"
-            [ test "It replaces the head operator of stack"
-                (\_ ->
-                    SY.init
-                        |> SY.appendOperand "4"
-                        |> SY.appendOperator Add
-                        |> SY.replaceCurrentOperator Subtract
-                        |> SY.extractOperatorStack
-                        |> Expect.equal [ Subtract ]
-                )
-            , test "It inserts an operator to an empty stack"
-                (\_ ->
-                    SY.init
-                        |> SY.appendOperand "4"
-                        |> SY.replaceCurrentOperator Subtract
-                        |> SY.extractOperatorStack
-                        |> Expect.equal [ Subtract ]
                 )
             ]
         , describe "evaluate"

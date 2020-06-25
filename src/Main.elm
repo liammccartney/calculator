@@ -2,16 +2,11 @@ module Main exposing (..)
 
 import Browser
 import Css
-import Css.Global
-import Decimal
 import Html.Styled as Html exposing (Html)
 import Html.Styled.Attributes as Html
 import Html.Styled.Events exposing (onClick)
-import Html.Styled.Keyed
-import List.Extra
 import Mutator exposing (Mutator(..), mutate)
 import Operator exposing (OperatorType(..))
-import RPNExpression exposing (..)
 import ShuntingYard exposing (ShuntingYard)
 
 
@@ -90,7 +85,7 @@ update msg model =
                         , previous = Nothing
                     }
 
-                Operator currOperator ->
+                Operator _ ->
                     { model | input = Operator operator }
 
                 Evaluated yard ->
@@ -107,7 +102,7 @@ update msg model =
                 Operand operand ->
                     { model | input = Operand (mutate mutator operand) }
 
-                Operator operator ->
+                Operator _ ->
                     let
                         currOperand =
                             model.yard |> ShuntingYard.currentOperand
