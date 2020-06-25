@@ -47,6 +47,7 @@ type Msg
     | OperatorPressed OperatorType
     | MutatorPressed Mutator
     | EqualsPressed
+    | AllClearPressed
 
 
 update : Msg -> Model -> Model
@@ -183,6 +184,9 @@ update msg model =
                         , previous = Nothing
                     }
 
+        AllClearPressed ->
+            init
+
 
 incrementOperand : String -> String -> String
 incrementOperand current new =
@@ -247,8 +251,7 @@ view model =
             [ Html.css displayTotalCss ]
             [ Html.text (display model) ]
         , Html.div [ Html.css buttonsContainerStyles ]
-            [ -- TODO: Replace with Clear
-              mutatorButton Negate
+            [ clearButton model.input
             , mutatorButton Negate
             , mutatorButton Percentile
             , operatorButton Divide
@@ -297,6 +300,9 @@ calculatorButton msg styles =
 
                 EqualsPressed ->
                     "="
+
+                AllClearPressed ->
+                    "AC"
     in
     Html.button
         [ onClick msg
@@ -355,6 +361,11 @@ equalsButton =
         [ Css.backgroundColor yellow
         , Css.borderBottomRightRadius (Css.px 5)
         ]
+
+
+clearButton : Input -> Html Msg
+clearButton input =
+    calculatorButton AllClearPressed []
 
 
 
