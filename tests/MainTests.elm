@@ -10,11 +10,11 @@ import Test exposing (..)
 suite : Test
 suite =
     describe "The Main Module"
-        [ describe "incrementOperand"
-            [ test "Increments an integer value" (\_ -> incrementOperand "1" "1" |> Expect.equal "11")
-            , test "Increments from 0" (\_ -> incrementOperand "0" "4" |> Expect.equal "4")
-            , test "Constrains to 10 digits long" (\_ -> incrementOperand "1234567890" "1" |> Expect.equal "1234567890")
-            , test "Constrains to 10 digits long favoring current operand" (\_ -> incrementOperand "1" "123456789123456789" |> Expect.equal "1")
+        [ describe "appendToOperand"
+            [ test "Appends to an string integer value" (\_ -> appendToOperand "1" "1" |> Expect.equal "11")
+            , test "Appends from 0" (\_ -> appendToOperand "0" "4" |> Expect.equal "4")
+            , test "Constrains to 10 digits long" (\_ -> appendToOperand "1234567890" "1" |> Expect.equal "1234567890")
+            , test "Constrains to 10 digits long favoring current operand" (\_ -> appendToOperand "1" "123456789123456789" |> Expect.equal "1")
             ]
         , describe "update"
             [ test "Inputting left hand side"
