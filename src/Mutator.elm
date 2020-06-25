@@ -1,4 +1,4 @@
-module Mutator exposing (..)
+module Mutator exposing (Mutator(..), mutate, toString)
 
 import Operator exposing (OperatorType(..), calculate)
 

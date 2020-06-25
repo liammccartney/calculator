@@ -1,6 +1,6 @@
 module ShuntingYardTests exposing (..)
 
-import Expect exposing (Expectation, FloatingPointTolerance(..))
+import Expect
 import Operator exposing (..)
 import RPNExpression as RPN
 import ShuntingYard as SY
@@ -67,25 +67,6 @@ suite =
                         |> Expect.equal "4 5 3 *"
                 )
             ]
-        , describe "replaceCurrentOperator"
-            [ test "It replaces the head operator of stack"
-                (\_ ->
-                    SY.init
-                        |> SY.appendOperand "4"
-                        |> SY.appendOperator Add
-                        |> SY.replaceCurrentOperator Subtract
-                        |> SY.extractOperatorStack
-                        |> Expect.equal [ Subtract ]
-                )
-            , test "It inserts an operator to an empty stack"
-                (\_ ->
-                    SY.init
-                        |> SY.appendOperand "4"
-                        |> SY.replaceCurrentOperator Subtract
-                        |> SY.extractOperatorStack
-                        |> Expect.equal [ Subtract ]
-                )
-            ]
         , describe "evaluate"
             [ test "It evaluates the underlying RPN Expression"
                 (\_ ->
@@ -98,8 +79,8 @@ suite =
                         |> Expect.equal "36"
                 )
             ]
-        , describe "preemptiveEvaluate"
-            [ test "It attempts to evaluate the last 3 tokens of the expression"
+        , describe "evaluateExpression"
+            [ test "It eagerly evaluates as much of the expression as it can"
                 (\_ ->
                     SY.init
                         |> SY.appendOperand "3"
@@ -108,11 +89,11 @@ suite =
                         |> SY.appendOperator Multiply
                         |> SY.appendOperand "2"
                         |> SY.appendOperator Divide
-                        |> SY.preemptiveEvaluate
+                        |> SY.evaluateExpression
                         |> Result.withDefault "0"
                         |> Expect.equal "8"
                 )
-            , test "It fails gracefully for invalid expression"
+            , test "It returns the working operand if the expression is incomplete"
                 (\_ ->
                     SY.init
                         |> SY.appendOperand "3"
@@ -120,8 +101,8 @@ suite =
                         |> SY.appendOperand "4"
                         |> SY.appendOperator Multiply
                         |> SY.appendOperand "2"
-                        |> SY.preemptiveEvaluate
-                        |> Expect.equal (Err "Evaluation Failure: Too Few Operators")
+                        |> SY.evaluateExpression
+                        |> Expect.equal (Ok "2")
                 )
             ]
         , describe "currentOperand"
