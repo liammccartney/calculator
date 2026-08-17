@@ -36,6 +36,26 @@ suite =
                         |> Expect.equal "3 7 + 6 - 2 ÷"
                 )
             ]
+        , describe "containsOperation"
+            [ test
+                "It is False for an expression of only operands"
+                (\_ ->
+                    emptyExpression
+                        |> appendOperand "3"
+                        |> containsOperation
+                        |> Expect.equal False
+                )
+            , test
+                "It is True once the expression holds an operator"
+                (\_ ->
+                    emptyExpression
+                        |> appendOperand "3"
+                        |> appendOperand "4"
+                        |> appendOperator Add
+                        |> containsOperation
+                        |> Expect.equal True
+                )
+            ]
         , describe "currentOperand"
             [ test
                 "It returns the last operand in the expression"

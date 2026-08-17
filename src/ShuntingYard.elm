@@ -2,6 +2,7 @@ module ShuntingYard exposing
     ( ShuntingYard
     , appendOperand
     , appendOperator
+    , containsOperation
     , currentOperand
     , currentOperator
     , eagerEvaluate
@@ -93,6 +94,17 @@ Directly evaluates the underlying expression without concern for the operator st
 evaluateExpression : ShuntingYard -> Result String String
 evaluateExpression (ShuntingYard expression _) =
     RPN.eagerEvaluate expression
+
+
+{-| containsOperation
+Whether the yard holds an operation, either one already shifted into the expression or one
+still waiting on the operator stack.
+This is how we tell a yard that is only a working operand apart from one that has something
+to evaluate.
+-}
+containsOperation : ShuntingYard -> Bool
+containsOperation (ShuntingYard expression operatorStack) =
+    RPN.containsOperation expression || not (List.isEmpty operatorStack)
 
 
 {-| currentOperand

@@ -184,7 +184,7 @@ suite =
                         |> display
                         |> Expect.equal "6"
                 )
-            , test "Evaluating shortcut after eager evaluation fallsback to last operand"
+            , test "Evaluating drops an operator that never got an operand"
                 (\_ ->
                     init
                         |> update (OperandPressed "3")
@@ -195,7 +195,20 @@ suite =
                         |> update (OperatorPressed Divide)
                         |> update EqualsPressed
                         |> display
-                        |> Expect.equal "4"
+                        |> Expect.equal "11"
+                )
+            , test "Evaluating drops a dropped operator entirely, it does not linger"
+                (\_ ->
+                    init
+                        |> update (OperandPressed "9")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "5")
+                        |> update (OperatorPressed Multiply)
+                        |> update (OperandPressed "7")
+                        |> update (OperatorPressed Subtract)
+                        |> update EqualsPressed
+                        |> display
+                        |> Expect.equal "44"
                 )
             , test "Mutating the current operand"
                 (\_ ->
@@ -224,6 +237,20 @@ suite =
                         |> update (MutatorPressed Negate)
                         |> display
                         |> Expect.equal "-11"
+                )
+            , test "Repeating an evaluation that dropped an operator"
+                (\_ ->
+                    init
+                        |> update (OperandPressed "3")
+                        |> update (OperatorPressed Add)
+                        |> update (OperandPressed "4")
+                        |> update (OperatorPressed Multiply)
+                        |> update (OperandPressed "2")
+                        |> update (OperatorPressed Divide)
+                        |> update EqualsPressed
+                        |> update EqualsPressed
+                        |> display
+                        |> Expect.equal "19"
                 )
             ]
         ]

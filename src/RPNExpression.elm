@@ -3,6 +3,7 @@ module RPNExpression exposing
     , Token
     , appendOperand
     , appendOperator
+    , containsOperation
     , currentOperand
     , eagerEvaluate
     , emptyExpression
@@ -49,6 +50,23 @@ Appends a given operator to the expression as a token
 appendOperator : OperatorType -> RPNExpression -> RPNExpression
 appendOperator operator expression =
     expression ++ [ Operator operator ]
+
+
+{-| containsOperation
+Whether the expression holds an operator, meaning there is an actual operation to evaluate
+rather than a lone operand.
+-}
+containsOperation : RPNExpression -> Bool
+containsOperation =
+    List.any
+        (\token ->
+            case token of
+                Operator _ ->
+                    True
+
+                Operand _ ->
+                    False
+        )
 
 
 {-| currentOperand

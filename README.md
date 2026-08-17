@@ -19,7 +19,13 @@ $ npm start
 I made two concessions to get this project done.
   1. There is only one clear button that clears the entire working operation, and reinitializes the application back to an empty starting state. I was finding it very difficult to separate between the states created by the clear and all-clear buttons. At least within the context of my data model.
   2. There is no consideration for expressions that evaluate to a value with more digits than can be rendered. This is an enhancement I'd like to make, but I cut it for time.
-  3. There is one set of operations that do not correctly evaluate. I let this go because I see it as an unlikely scenario, as well as I don't fully understand yet what's happening. Here is an example of what I mean:
+
+### Pressing Equals After an Operator
+Pressing `=` while an operator is still waiting for its right hand operand is ambiguous, so the calculator has two rules for it.
+
+If there is nothing else to evaluate, the operator is applied to the working operand and itself. `3 + =` is 6, and `8 ÷ =` is 1.
+
+If the expression already holds an operation, that dangling operator is dropped and the rest of the expression is evaluated. For example:
 
     1. Press 3
     2. Press +
@@ -28,8 +34,7 @@ I made two concessions to get this project done.
     5. Press 2
     6. Press ÷
     7. Press =
-  On the macOS calculator this will evaluate to 8.375 and is expressed as "3 / 4 * 2 + 8".
-  I was unable to find a way to get my data model to work in this scenario. Instead it falls back to the last operand of a valid expression, in this case 4.
+  Pressing `÷` collapses `4 x 2` and displays 8, leaving `3 + 8 ÷` pending. The `÷` never gets an operand, so it is discarded and the result is `3 + 8`, or 11. This matches the macOS calculator.
 
 
 ## Why Elm?

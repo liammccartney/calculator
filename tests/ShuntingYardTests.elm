@@ -105,6 +105,33 @@ suite =
                         |> Expect.equal (Ok "2")
                 )
             ]
+        , describe "containsOperation"
+            [ test "It is False when there is only a working operand"
+                (\_ ->
+                    SY.init
+                        |> SY.appendOperand "3"
+                        |> SY.containsOperation
+                        |> Expect.equal False
+                )
+            , test "It is True when an operator is still on the stack"
+                (\_ ->
+                    SY.init
+                        |> SY.appendOperand "3"
+                        |> SY.appendOperator Add
+                        |> SY.containsOperation
+                        |> Expect.equal True
+                )
+            , test "It is True when an operator has been shifted into the expression"
+                (\_ ->
+                    SY.init
+                        |> SY.appendOperand "3"
+                        |> SY.appendOperator Multiply
+                        |> SY.appendOperand "4"
+                        |> SY.appendOperator Add
+                        |> SY.containsOperation
+                        |> Expect.equal True
+                )
+            ]
         , describe "currentOperand"
             [ test "It returns the current working operand of the underlying RPN expression"
                 (\_ ->

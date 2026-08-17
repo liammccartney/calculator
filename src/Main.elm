@@ -184,32 +184,37 @@ update msg model =
                                             model.yard
                             }
 
-                -- We have an operator, which means we want to add this operator to the expression
-                -- and then add the result of the expression to itself.
+                -- We have an operator that never got an operand of its own.
+                -- If the expression already holds an operation, that operator is a dead end:
+                -- we drop it and evaluate what we have. This is what the macOS calculator does,
+                -- e.g. 3 + 4 x 2 ÷ = evaluates 3 + 4 x 2 and ignores the ÷.
+                -- Otherwise there is nothing to evaluate on its own, so we fall back to
+                -- applying the operator to the working operand and itself, e.g. 3 + = is 6.
                 Operator operator ->
-                    let
-                        yard =
-                            model.yard |> ShuntingYard.appendOperator operator
-                    in
-                    case ShuntingYard.evaluateExpression yard of
-                        Ok result ->
-                            { model
-                                | yard =
-                                    model.yard
-                                        |> ShuntingYard.appendOperator operator
-                                        |> ShuntingYard.appendOperand result
-                                , input = Empty
-                                , previous = Nothing
-                            }
+                    if ShuntingYard.containsOperation model.yard then
+                        { model | input = Empty, previous = Nothing }
 
-                        Err _ ->
-                            { model
-                                | yard =
-                                    model.yard
-                                        |> ShuntingYard.appendOperator operator
-                                , input = Empty
-                                , previous = Nothing
-                            }
+                    else
+                        let
+                            yard =
+                                model.yard |> ShuntingYard.appendOperator operator
+                        in
+                        case ShuntingYard.evaluateExpression yard of
+                            Ok result ->
+                                { model
+                                    | yard =
+                                        yard
+                                            |> ShuntingYard.appendOperand result
+                                    , input = Empty
+                                    , previous = Nothing
+                                }
+
+                            Err _ ->
+                                { model
+                                    | yard = yard
+                                    , input = Empty
+                                    , previous = Nothing
+                                }
 
                 -- We just evaluated an expression, we want to repeat it
                 -- We also want to unset the previous operation so we can start fresh with a new one
